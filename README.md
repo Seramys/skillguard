@@ -96,7 +96,7 @@ echo $?   # 0 = 通过，1 = 达到阈值，2 = 参数/配置/规则/IO 错误
 
 ## 安装
 
-> **当前状态（0.1.0）**：仓库内已完整验证单文件二进制、Node 启动器和 Python 启动器；`npm` / `PyPI` 包与多平台 Release 附件会在发布流程完成后提供。下面所有标注“发布后”的命令，在包正式发布前请使用对应的“仓库内验证”命令。
+> **当前状态（0.1.0）**：npm / PyPI 的 0.1.0 已发布，当前产物为 **Windows x64**；Linux/macOS 平台包待补。单文件二进制、Node 启动器和 Python 启动器均已在本地验证；其他平台请先用源码构建。
 
 ### 方式一：单文件二进制（推荐）
 
@@ -138,7 +138,7 @@ bash scripts/build.sh
 
 ### 方式二：Node 生态
 
-发布后，一行命令：
+已发布（Windows x64），一行命令：
 
 ```bash
 npx --yes seramys-skillguard@0.1.0 scan ./skills --fail-on high
@@ -167,7 +167,7 @@ npm 包会把平台二进制放在 `vendor/<platform>-<arch>/`。当前仓库内
 
 ### 方式三：Python 生态
 
-发布后：
+已发布（Windows x64）：
 
 ```bash
 pip install seramys-skillguard
@@ -685,9 +685,9 @@ jobs:
           sarif_file: skillguard.sarif
 ```
 
-### 使用本仓库的 composite Action（npm 发布后）
+### 使用本仓库的 composite Action（npm 包已发布，当前 Windows x64）
 
-`action.yml` 已包含在仓库中，当前通过 `npx seramys-skillguard` 运行；npm 包发布后可以直接使用：
+`action.yml` 已包含在仓库中，当前通过 `npx seramys-skillguard` 运行；npm 包已发布，但当前仅内含 win32-x64：
 
 ```yaml
 - uses: Seramys/skillguard@main
@@ -853,7 +853,7 @@ LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不�
 <details>
 <summary><b>npm / PyPI 已经发布了吗？</b></summary>
 
-0.1.0 当前以源码构建和仓库内启动器验证为主。`npx seramys-skillguard` 和 `pip install seramys-skillguard` 在包正式发布后可用；发布前请使用上面的“仓库内验证”命令。
+0.1.0 已发布到 npm / PyPI，当前为 Windows x64；Linux/macOS 平台包待补。Windows 上可以直接使用下面的命令；其他平台请先源码构建。
 
 </details>
 

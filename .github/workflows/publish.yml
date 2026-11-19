@@ -1,0 +1,117 @@
+name: Publish (Windows x64 preview)
+
+# Manual on purpose: 0.1.0 is already on npm/PyPI, and current packages are Windows-only.
+# After the multi-platform packaging matrix lands, switch this to release-triggered publishing.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_version:
+        description: "Type the exact version to publish (e.g. 0.1.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python build tools
+        shell: bash
+        run: python -m pip install --upgrade pip build twine
+
+      - name: Test
+        shell: bash
+        run: cargo test
+
+      - name: Validate versions
+        shell: bash
+        env:
+          CONFIRM_VERSION: ${{ inputs.confirm_version }}
+        run: |
+          set -euo pipefail
+          cargo_version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          npm_version=$(node -p "require('./packages/npm/package.json').version")
+          py_version=$(python -c "import tomllib; print(tomllib.load(open('packages/python/pyproject.toml','rb'))['project']['version'])")
+          py_init=$(grep -m1 '__version__' packages/python/src/skillguard/__init__.py | cut -d'"' -f2)
+          echo "cargo=$cargo_version npm=$npm_version pyproject=$py_version init=$py_init"
+          test "$cargo_version" = "$npm_version"
+          test "$cargo_version" = "$py_version"
+          test "$cargo_version" = "$py_init"
+          test "$cargo_version" = "$CONFIRM_VERSION"
+
+      - name: Refuse to republish an existing version
+        shell: bash
+        env:
+          VERSION: ${{ inputs.confirm_version }}
+        run: |
+          set -euo pipefail
+          if npm view "seramys-skillguard@$VERSION" version --registry=https://registry.npmjs.org/ >/dev/null 2>&1; then
+            echo "npm version $VERSION already exists; bump versions first." >&2
+            exit 1
+          fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/seramys-skillguard/$VERSION/json")
+          if [ "$code" = "200" ]; then
+            echo "PyPI version $VERSION already exists; bump versions first." >&2
+            exit 1
+          fi
+
+      - name: Build npm package
+        shell: bash
+        run: bash scripts/package-npm.sh
+
+      - name: Publish npm
+        shell: bash
+        working-directory: packages/npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '//registry.npmjs.org/:_authToken=%s\n' "$NODE_AUTH_TOKEN" > .npmrc
+          npm publish --access public
+          rm -f .npmrc
+
+      - name: Build Python wheel
+        shell: bash
+        run: bash scripts/package-python.sh
+
+      - name: Check wheel
+        shell: bash
+        env:
+          PYTHONIOENCODING: utf-8
+          NO_COLOR: "1"
+        run: |
+          set -euo pipefail
+          ls -l packages/python/dist/*.whl
+          python -m twine check packages/python/dist/*.whl
+
+      - name: Publish PyPI
+        shell: bash
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          PYTHONIOENCODING: utf-8
+          NO_COLOR: "1"
+        run: |
+          set -euo pipefail
+          python -m twine upload packages/python/dist/*.whl
+
+      - name: Verify npm
+        shell: bash
+        env:
+          VERSION: ${{ inputs.confirm_version }}
+        run: |
+          set -euo pipefail
+          npm view "seramys-skillguard@$VERSION" version --registry=https://registry.npmjs.org/

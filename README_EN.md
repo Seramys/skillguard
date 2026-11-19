@@ -97,7 +97,7 @@ Generate SARIF for GitHub Code Scanning:
 
 ## Installation
 
-> **Current status (0.1.0)**: the single-file binary, Node launcher, and Python launcher are fully verified in this repository. npm / PyPI packages and multi-platform Release assets will follow the release process. Commands marked “after publish” can be replaced with the “repository verification” commands until then.
+> **Current status (0.1.0)**: npm / PyPI 0.1.0 is published, currently as **Windows x64**; Linux/macOS platform packages are pending. The single binary, Node launcher, and Python launcher are fully verified locally; build from source on other platforms.
 
 ### Option 1: single-file binary (recommended)
 
@@ -139,7 +139,7 @@ bash scripts/build.sh
 
 ### Option 2: Node ecosystem
 
-After publish:
+Published (Windows x64):
 
 ```bash
 npx --yes seramys-skillguard@0.1.0 scan ./skills --fail-on high
@@ -168,7 +168,7 @@ The npm package stores platform binaries under `vendor/<platform>-<arch>/`. The 
 
 ### Option 3: Python ecosystem
 
-After publish:
+Published (Windows x64):
 
 ```bash
 pip install seramys-skillguard
@@ -686,9 +686,9 @@ jobs:
           sarif_file: skillguard.sarif
 ```
 
-### Use the composite Action (after npm publish)
+### Use the composite Action (npm package published; currently Windows x64)
 
-`action.yml` is included and currently runs through `npx seramys-skillguard`. Once the npm package is published:
+`action.yml` is included and currently runs through `npx seramys-skillguard`. The npm package is published, but it currently bundles only win32-x64:
 
 ```yaml
 - uses: Seramys/skillguard@main
@@ -854,7 +854,7 @@ The source builds on Windows / Linux / macOS, and the CI matrix runs tests and r
 <details>
 <summary><b>Are npm / PyPI packages published?</b></summary>
 
-0.1.0 is currently verified through source builds and repository launchers. `npx seramys-skillguard` and `pip install seramys-skillguard` will work after the packages are published; until then, use the repository verification commands above.
+0.1.0 is published to npm / PyPI, currently as Windows x64; Linux/macOS platform packages are pending. Use the commands below on Windows; build from source on other platforms.
 
 </details>
 

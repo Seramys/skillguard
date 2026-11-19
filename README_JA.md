@@ -82,7 +82,7 @@ cargo build --release
 
 ## インストール
 
-> **0.1.0 の現状**：単一バイナリ、Node ランチャー、Python ランチャーはこのリポジトリで検証済みです。npm / PyPI パッケージとマルチプラットフォームの Release 添付は公開プロセス後に提供されます。
+> **0.1.0 の現状**：単一バイナリ、Node ランチャー、Python ランチャーはこのリポジトリで検証済みです。npm / PyPI の 0.1.0 は公開済み（Windows x64）。Linux/macOS のプラットフォームパッケージは今後追加されます。
 
 ### 1. 単一バイナリ（推奨）
 
@@ -94,7 +94,7 @@ bash scripts/build.sh     # dist/<platform>-<arch>/ にコピー
 
 ### 2. Node
 
-公開後：
+公開済み（Windows x64）：
 
 ```bash
 npx --yes seramys-skillguard@0.1.0 scan ./skills --fail-on high
@@ -108,7 +108,7 @@ node packages/npm/bin/skillguard.js scan ./tests/fixtures/clean-skill --no-color
 
 ### 3. Python
 
-公開後：
+公開済み（Windows x64）：
 
 ```bash
 pip install seramys-skillguard
