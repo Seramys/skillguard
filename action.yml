@@ -19,7 +19,7 @@ inputs:
   version:
     description: npm package version
     required: false
-    default: "0.1.0"
+    default: "0.1.1"
 runs:
   using: composite
   steps:
