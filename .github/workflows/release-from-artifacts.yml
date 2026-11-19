@@ -23,7 +23,28 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve target SHA
+        id: target
+        shell: bash
+        env:
+          INPUT_TARGET: ${{ inputs.target_sha }}
+        run: |
+          set -euo pipefail
+          if git rev-parse --verify "$INPUT_TARGET^{commit}" >/dev/null 2>&1; then
+            echo "sha=$(git rev-parse "$INPUT_TARGET^{commit}")" >> "$GITHUB_OUTPUT"
+          else
+            echo "invalid target_sha: $INPUT_TARGET" >&2
+            exit 1
+          fi
+
       - name: Download platform binaries
         shell: bash
         env:
@@ -39,10 +60,27 @@ jobs:
           gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n binary-darwin-x64 -D staging/darwin-x64
           gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n binary-darwin-arm64 -D staging/darwin-arm64
 
-          cp "$(find staging/win32 -type f -name 'skillguard.exe' | head -n1)" release-assets/skillguard-win32-x64.exe
-          cp "$(find staging/linux -type f -name 'skillguard' | head -n1)" release-assets/skillguard-linux-x64
-          cp "$(find staging/darwin-x64 -type f -name 'skillguard' | head -n1)" release-assets/skillguard-darwin-x64
-          cp "$(find staging/darwin-arm64 -type f -name 'skillguard' | head -n1)" release-assets/skillguard-darwin-arm64
+          echo "--- downloaded tree ---"
+          find staging -maxdepth 4 -type f -print
+
+      - name: Stage release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          win=$(find staging/win32 -type f -name 'skillguard.exe' -print -quit)
+          linux=$(find staging/linux -type f -name 'skillguard' -print -quit)
+          darwin_x64=$(find staging/darwin-x64 -type f -name 'skillguard' -print -quit)
+          darwin_arm64=$(find staging/darwin-arm64 -type f -name 'skillguard' -print -quit)
+
+          test -n "$win" || { echo "win32 binary not found" >&2; exit 1; }
+          test -n "$linux" || { echo "linux binary not found" >&2; exit 1; }
+          test -n "$darwin_x64" || { echo "darwin x64 binary not found" >&2; exit 1; }
+          test -n "$darwin_arm64" || { echo "darwin arm64 binary not found" >&2; exit 1; }
+
+          cp "$win" release-assets/skillguard-win32-x64.exe
+          cp "$linux" release-assets/skillguard-linux-x64
+          cp "$darwin_x64" release-assets/skillguard-darwin-x64
+          cp "$darwin_arm64" release-assets/skillguard-darwin-arm64
 
           chmod +x release-assets/skillguard-* 2>/dev/null || true
           sha256sum release-assets/skillguard-* > release-assets/SHA256SUMS.txt
@@ -53,7 +91,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
-          TARGET: ${{ inputs.target_sha }}
+          TARGET: ${{ steps.target.outputs.sha }}
         run: |
           set -euo pipefail
           VERSION="${TAG#v}"
@@ -74,6 +112,10 @@ jobs:
 
           if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" release-assets/* -R "$GITHUB_REPOSITORY" --clobber
+          elif gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" release-assets/* -R "$GITHUB_REPOSITORY" \
+              --title "SkillGuard ${VERSION}" \
+              --notes-file release-notes.md
           else
             gh release create "$TAG" release-assets/* -R "$GITHUB_REPOSITORY" \
               --title "SkillGuard ${VERSION}" \

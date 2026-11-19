@@ -249,12 +249,18 @@ jobs:
       contents: write
       actions: read
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download platform binaries
         uses: actions/download-artifact@v4
         with:
           pattern: binary-*
           path: staging
           merge-multiple: true
+
+      - name: Show downloaded tree
+        shell: bash
+        run: find staging -maxdepth 4 -type f -print
 
       - name: Stage release assets
         shell: bash
