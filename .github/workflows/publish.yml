@@ -240,3 +240,66 @@ jobs:
         run: |
           set -euo pipefail
           python -m twine upload wheels/*.whl
+
+  release-github:
+    if: ${{ inputs.publish == true }}
+    needs: [build, package-npm, publish-pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Download platform binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: staging
+          merge-multiple: true
+
+      - name: Stage release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-assets
+          mkdir -p release-assets
+          cp staging/win32-x64/skillguard.exe release-assets/skillguard-win32-x64.exe
+          cp staging/linux-x64/skillguard release-assets/skillguard-linux-x64
+          cp staging/darwin-x64/skillguard release-assets/skillguard-darwin-x64
+          cp staging/darwin-arm64/skillguard release-assets/skillguard-darwin-arm64
+          chmod +x release-assets/skillguard-* 2>/dev/null || true
+          sha256sum release-assets/skillguard-* > release-assets/SHA256SUMS.txt
+          ls -l release-assets
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ inputs.confirm_version }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          cat > release-notes.md <<EOF
+          SkillGuard ${VERSION}
+
+          Multi-platform release:
+          - Windows x64
+          - Linux x64 (static musl)
+          - macOS x64
+          - macOS arm64
+
+          npm: seramys-skillguard@${VERSION}
+          PyPI: seramys-skillguard==${VERSION}
+
+          Assets: 4 platform binaries + SHA256SUMS.txt
+          EOF
+
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* -R "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" release-assets/* -R "$GITHUB_REPOSITORY" \
+              --title "SkillGuard ${VERSION}" \
+              --notes-file release-notes.md \
+              --target "$GITHUB_SHA"
+          fi
+
+          echo "Release URL: $(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json url -q .url)" >> "$GITHUB_STEP_SUMMARY"

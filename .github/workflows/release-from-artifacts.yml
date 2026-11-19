@@ -1,0 +1,84 @@
+name: Release from artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v0.1.1"
+        required: true
+        type: string
+      run_id:
+        description: "Actions run ID that contains binary-* artifacts"
+        required: true
+        type: string
+      target_sha:
+        description: "Commit SHA for the release tag (use a green CI commit)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download platform binaries
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+          rm -rf staging release-assets
+          mkdir -p staging release-assets
+
+          gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n binary-win32-x64 -D staging/win32
+          gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n binary-linux-x64 -D staging/linux
+          gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n binary-darwin-x64 -D staging/darwin-x64
+          gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n binary-darwin-arm64 -D staging/darwin-arm64
+
+          cp "$(find staging/win32 -type f -name 'skillguard.exe' | head -n1)" release-assets/skillguard-win32-x64.exe
+          cp "$(find staging/linux -type f -name 'skillguard' | head -n1)" release-assets/skillguard-linux-x64
+          cp "$(find staging/darwin-x64 -type f -name 'skillguard' | head -n1)" release-assets/skillguard-darwin-x64
+          cp "$(find staging/darwin-arm64 -type f -name 'skillguard' | head -n1)" release-assets/skillguard-darwin-arm64
+
+          chmod +x release-assets/skillguard-* 2>/dev/null || true
+          sha256sum release-assets/skillguard-* > release-assets/SHA256SUMS.txt
+          ls -l release-assets
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          TARGET: ${{ inputs.target_sha }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          cat > release-notes.md <<EOF
+          SkillGuard ${VERSION}
+
+          Multi-platform release:
+          - Windows x64
+          - Linux x64 (static musl)
+          - macOS x64
+          - macOS arm64
+
+          npm: seramys-skillguard@${VERSION}
+          PyPI: seramys-skillguard==${VERSION}
+
+          Assets: 4 platform binaries + SHA256SUMS.txt
+          EOF
+
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* -R "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" release-assets/* -R "$GITHUB_REPOSITORY" \
+              --title "SkillGuard ${VERSION}" \
+              --notes-file release-notes.md \
+              --target "$TARGET"
+          fi
+
+          echo "Release URL: $(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json url -q .url)" >> "$GITHUB_STEP_SUMMARY"
