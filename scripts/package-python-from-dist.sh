@@ -14,7 +14,8 @@ case "$(uname -m)" in
   *) ARCH="$(uname -m)" ;;
 esac
 
-SRC="$ROOT/dist/${PLAT}-${ARCH}/$EXE"
+PLAT_DIR="${SKILLGUARD_PLATFORM_DIR:-${PLAT}-${ARCH}}"
+SRC="$ROOT/dist/$PLAT_DIR/$EXE"
 if [ ! -f "$SRC" ]; then
   echo "missing prebuilt binary: $SRC" >&2
   exit 1

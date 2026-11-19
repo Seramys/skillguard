@@ -1,3 +1,5 @@
+import os
+
 from setuptools import setup
 from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 
@@ -9,6 +11,9 @@ class bdist_wheel(_bdist_wheel):
 
     def get_tag(self):
         _, _, plat = super().get_tag()
+        override = os.environ.get("SKILLGUARD_WHEEL_PLATFORM")
+        if override:
+            return "py3", "none", override
         # The Linux binary is built as a static musl executable in CI. A
         # manylinux tag keeps pip on glibc-based distros from rejecting it;
         # the binary itself has no glibc dependency.

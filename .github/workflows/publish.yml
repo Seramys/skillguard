@@ -82,10 +82,11 @@ jobs:
             target: x86_64-apple-darwin
             plat: darwin-x64
             exe: skillguard
-          - os: macos-15
+          - os: macos-15-intel
             target: aarch64-apple-darwin
             plat: darwin-arm64
             exe: skillguard
+            wheel_platform: macosx_15_0_arm64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -120,6 +121,9 @@ jobs:
 
       - name: Build platform wheel
         shell: bash
+        env:
+          SKILLGUARD_PLATFORM_DIR: ${{ matrix.plat }}
+          SKILLGUARD_WHEEL_PLATFORM: ${{ matrix.wheel_platform }}
         run: bash scripts/package-python-from-dist.sh
 
       - name: Check wheel
