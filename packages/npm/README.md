@@ -1,11 +1,13 @@
-# skillguard-cli
+# seramys-skillguard
 
 npm launcher for [SkillGuard](https://github.com/Seramys/skillguard), a supply-chain
 security scanner for AI agent skills.
 
+> 0.1.0 currently bundles the Windows x64 binary. On Linux/macOS, build from source or use a platform-specific release asset.
+
 ```bash
-npx skillguard-cli scan ./skills --fail-on high
-npx skillguard-cli scan ./skills --format sarif > skillguard.sarif
+npx seramys-skillguard scan ./skills --fail-on high
+npx seramys-skillguard scan ./skills --format sarif > skillguard.sarif
 ```
 
 The launcher looks for the native binary in this order:

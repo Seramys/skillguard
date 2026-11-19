@@ -1,5 +1,5 @@
 {
-  "name": "skillguard-cli",
+  "name": "seramys-skillguard",
   "version": "0.1.0",
   "description": "Supply-chain security scanner for AI agent skills (Claude Code, Cursor, OpenClaw, Hermes)",
   "license": "MIT",
@@ -27,5 +27,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Seramys/skillguard"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -1,4 +1,4 @@
-name: SkillGuard
+name: Seramys SkillGuard
 description: Scan AI agent skills for prompt injection, excessive permissions, secrets and supply-chain risks.
 branding:
   icon: shield
@@ -28,4 +28,4 @@ runs:
         node-version: 20
     - name: Run SkillGuard
       shell: bash
-      run: npx --yes skillguard-cli@${{ inputs.version }} scan "${{ inputs.path }}" --format "${{ inputs.format }}" --fail-on "${{ inputs.fail-on }}"
+      run: npx --yes seramys-skillguard@${{ inputs.version }} scan "${{ inputs.path }}" --format "${{ inputs.format }}" --fail-on "${{ inputs.fail-on }}"

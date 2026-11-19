@@ -97,7 +97,7 @@ bash scripts/build.sh     # dist/<platform>-<arch>/ にコピー
 公開後：
 
 ```bash
-npx --yes skillguard-cli@0.1.0 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.1.0 scan ./skills --fail-on high
 ```
 
 リポジトリ内での検証：
@@ -111,7 +111,7 @@ node packages/npm/bin/skillguard.js scan ./tests/fixtures/clean-skill --no-color
 公開後：
 
 ```bash
-pip install skillguard-cli
+pip install seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
 

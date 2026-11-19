@@ -373,7 +373,7 @@ jobs:
         with:
           node-version: 20
       - name: Scan agent skills
-        run: npx --yes skillguard-cli@0.1.0 scan . --format sarif --fail-on high > skillguard.sarif
+        run: npx --yes seramys-skillguard@0.1.0 scan . --format sarif --fail-on high > skillguard.sarif
       - name: Upload SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v3

@@ -142,13 +142,13 @@ bash scripts/build.sh
 After publish:
 
 ```bash
-npx --yes skillguard-cli@0.1.0 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.1.0 scan ./skills --fail-on high
 ```
 
 Global install:
 
 ```bash
-npm install -g skillguard-cli
+npm install -g seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
 
@@ -171,9 +171,11 @@ The npm package stores platform binaries under `vendor/<platform>-<arch>/`. The 
 After publish:
 
 ```bash
-pip install skillguard-cli
+pip install seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
+
+> The 0.1.0 wheel is tagged for the platform it was built on; the current local artifact is Windows x64. Build from source or wait for a platform wheel on Linux/macOS.
 
 **Repository verification**:
 
@@ -686,7 +688,7 @@ jobs:
 
 ### Use the composite Action (after npm publish)
 
-`action.yml` is included and currently runs through `npx skillguard-cli`. Once the npm package is published:
+`action.yml` is included and currently runs through `npx seramys-skillguard`. Once the npm package is published:
 
 ```yaml
 - uses: Seramys/skillguard@main
@@ -697,6 +699,8 @@ jobs:
 ```
 
 > The composite Action runs the scan and sets the exit code; it does not create a SARIF file. For Code Scanning, use the local-build workflow above, or redirect the SARIF output and upload it yourself.
+
+> The current npm package bundles only the win32-x64 binary; on Linux/macOS runners, use the local-build workflow above.
 
 ### Generic CI
 
@@ -733,7 +737,7 @@ Environment: Windows 11 x64, SkillGuard 0.1.0, 2026-11-19.
 | Lints | `cargo clippy --all-targets -- -D warnings` | 0 warnings |
 | Self-scan | `dist\win32-x64\skillguard.exe scan .` | PASS · 2 low |
 | SARIF | `--format sarif` | valid 2.1.0 · 29 rules · 4 results |
-| npm package | `npm pack --dry-run` | 5 files · 620.9 kB · binary included |
+| npm package | `npm pack --dry-run` | 5 files · 621.0 kB · binary included |
 | Python launcher | `skillguard version` | skillguard 0.1.0 |
 
 <p align="center">
@@ -850,7 +854,7 @@ The source builds on Windows / Linux / macOS, and the CI matrix runs tests and r
 <details>
 <summary><b>Are npm / PyPI packages published?</b></summary>
 
-0.1.0 is currently verified through source builds and repository launchers. `npx skillguard-cli` and `pip install skillguard-cli` will work after the packages are published; until then, use the repository verification commands above.
+0.1.0 is currently verified through source builds and repository launchers. `npx seramys-skillguard` and `pip install seramys-skillguard` will work after the packages are published; until then, use the repository verification commands above.
 
 </details>
 

@@ -1,9 +1,11 @@
-# skillguard-cli (Python)
+# seramys-skillguard (Python)
 
 Python entry point for [SkillGuard](https://github.com/Seramys/skillguard).
 
+> The 0.1.0 wheel bundles the native binary for the platform it was built on (validated on Windows x64).
+
 ```bash
-pip install skillguard-cli
+pip install seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
 

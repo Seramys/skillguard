@@ -141,13 +141,13 @@ bash scripts/build.sh
 发布后，一行命令：
 
 ```bash
-npx --yes skillguard-cli@0.1.0 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.1.0 scan ./skills --fail-on high
 ```
 
 全局安装：
 
 ```bash
-npm install -g skillguard-cli
+npm install -g seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
 
@@ -170,9 +170,11 @@ npm 包会把平台二进制放在 `vendor/<platform>-<arch>/`。当前仓库内
 发布后：
 
 ```bash
-pip install skillguard-cli
+pip install seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
+
+> 0.1.0 的 wheel 按构建平台打包；当前本地产物为 Windows x64。Linux/macOS 请从源码构建或等待对应平台 wheel。
 
 **仓库内验证**：
 
@@ -685,7 +687,7 @@ jobs:
 
 ### 使用本仓库的 composite Action（npm 发布后）
 
-`action.yml` 已包含在仓库中，当前通过 `npx skillguard-cli` 运行；npm 包发布后可以直接使用：
+`action.yml` 已包含在仓库中，当前通过 `npx seramys-skillguard` 运行；npm 包发布后可以直接使用：
 
 ```yaml
 - uses: Seramys/skillguard@main
@@ -696,6 +698,8 @@ jobs:
 ```
 
 > composite Action 目前用于运行扫描和设置退出码；它不会自动产出 SARIF 文件。需要 Code Scanning 时，请使用上面的本地构建工作流，或自行把 SARIF 写入文件并上传。
+
+> 当前 npm 包仅内置 win32-x64 二进制；在 Linux/macOS runner 上请使用上面的本地构建工作流。
 
 ### 通用 CI
 
@@ -732,7 +736,7 @@ skillguard scan ./skills --fail-on high
 | 静态检查 | `cargo clippy --all-targets -- -D warnings` | 0 warnings |
 | 自扫描 | `dist\win32-x64\skillguard.exe scan .` | PASS · 2 low |
 | SARIF | `--format sarif` | valid 2.1.0 · 29 rules · 4 results |
-| npm 包 | `npm pack --dry-run` | 5 files · 620.9 kB · binary included |
+| npm 包 | `npm pack --dry-run` | 5 files · 621.0 kB · binary included |
 | Python 启动器 | `skillguard version` | skillguard 0.1.0 |
 
 <p align="center">
@@ -849,7 +853,7 @@ LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不�
 <details>
 <summary><b>npm / PyPI 已经发布了吗？</b></summary>
 
-0.1.0 当前以源码构建和仓库内启动器验证为主。`npx skillguard-cli` 和 `pip install skillguard-cli` 在包正式发布后可用；发布前请使用上面的“仓库内验证”命令。
+0.1.0 当前以源码构建和仓库内启动器验证为主。`npx seramys-skillguard` 和 `pip install seramys-skillguard` 在包正式发布后可用；发布前请使用上面的“仓库内验证”命令。
 
 </details>
 
