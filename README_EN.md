@@ -97,7 +97,7 @@ Generate SARIF for GitHub Code Scanning:
 
 ## Installation
 
-> **Current status (0.1.0)**: npm / PyPI 0.1.0 is published, currently as **Windows x64**; Linux/macOS platform packages are pending. The single binary, Node launcher, and Python launcher are fully verified locally; build from source on other platforms.
+> **Current status (0.1.1)**: npm / PyPI 0.1.1 is published with **win32-x64, linux-x64, darwin-x64, and darwin-arm64**; GitHub Release v0.1.1 ships 4 platform binaries and SHA256SUMS. The single binary, Node launcher, and Python launcher are verified.
 
 ### Option 1: single-file binary (recommended)
 
@@ -139,10 +139,10 @@ bash scripts/build.sh
 
 ### Option 2: Node ecosystem
 
-Published (Windows x64):
+Published (multi-platform):
 
 ```bash
-npx --yes seramys-skillguard@0.1.0 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.1.1 scan ./skills --fail-on high
 ```
 
 Global install:
@@ -164,18 +164,18 @@ node packages/npm/bin/skillguard.js scan ./tests/fixtures/clean-skill --no-color
 </p>
 <p align="center"><sub>The Node launcher is a thin shim; scanning is still done by the same Rust binary.</sub></p>
 
-The npm package stores platform binaries under `vendor/<platform>-<arch>/`. The local `npm pack` verification includes `vendor/win32-x64/skillguard.exe`; for multi-platform publishing, platform sub-packages are recommended, and `packages/npm/lib/resolve.js` already has the resolution logic.
+The npm package stores four platform binaries under `vendor/<platform>-<arch>/`: `win32-x64`, `linux-x64`, `darwin-x64`, and `darwin-arm64`. `packages/npm/lib/resolve.js` selects the current platform.
 
 ### Option 3: Python ecosystem
 
-Published (Windows x64):
+Published (multi-platform):
 
 ```bash
 pip install seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
 
-> The 0.1.0 wheel is tagged for the platform it was built on; the current local artifact is Windows x64. Build from source or wait for a platform wheel on Linux/macOS.
+> 0.1.1 publishes separate platform wheels for Windows, Linux, and macOS (win_amd64, manylinux_2_17_x86_64, macOS arm64/universal2).
 
 **Repository verification**:
 
@@ -369,7 +369,7 @@ skillguard scan ./tests/fixtures/exfil-skill --format json --json-pretty
 ```json
 {
   "tool": "skillguard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "root": "/path/to/exfil-skill",
   "summary": {
     "skills": 1,
@@ -686,9 +686,9 @@ jobs:
           sarif_file: skillguard.sarif
 ```
 
-### Use the composite Action (npm package published; currently Windows x64)
+### Use the composite Action (npm package published with 4 platform binaries)
 
-`action.yml` is included and currently runs through `npx seramys-skillguard`. The npm package is published, but it currently bundles only win32-x64:
+`action.yml` is included and currently runs through `npx seramys-skillguard`. The npm package 0.1.1 bundles all four platform binaries:
 
 ```yaml
 - uses: Seramys/skillguard@main
@@ -700,7 +700,7 @@ jobs:
 
 > The composite Action runs the scan and sets the exit code; it does not create a SARIF file. For Code Scanning, use the local-build workflow above, or redirect the SARIF output and upload it yourself.
 
-> The current npm package bundles only the win32-x64 binary; on Linux/macOS runners, use the local-build workflow above.
+> The npm package 0.1.1 includes win32-x64, linux-x64, darwin-x64, and darwin-arm64; the Action can run on ubuntu/windows/macos runners.
 
 ### Generic CI
 
@@ -728,22 +728,23 @@ A non-zero exit code fails the job; SARIF is optional.
 </p>
 <p align="center"><sub>Local verification: 35 tests, 0 clippy warnings, self-scan PASS, valid SARIF 2.1.0.</sub></p>
 
-Environment: Windows 11 x64, SkillGuard 0.1.0, 2026-11-19.
+Environment: Windows 11 x64, SkillGuard 0.1.1, 2026-11-19.
 
 | Check | Command | Result |
 |---|---|---|
 | Unit tests | `cargo test` | 19 passed · 0 failed |
 | Integration tests | `cargo test` | 16 passed · 0 failed |
 | Lints | `cargo clippy --all-targets -- -D warnings` | 0 warnings |
-| Self-scan | `dist\win32-x64\skillguard.exe scan .` | PASS · 2 low |
+| Self-scan | `dist\win32-x64\skillguard.exe scan .` | PASS · 4 low |
 | SARIF | `--format sarif` | valid 2.1.0 · 29 rules · 4 results |
-| npm package | `npm pack --dry-run` | 5 files · 621.0 kB · binary included |
-| Python launcher | `skillguard version` | skillguard 0.1.0 |
+| npm package | `npm pack --dry-run` | 8 files · 4 platform binaries · bundled |
+| PyPI | `twine upload` | 4 platform wheels · 0.1.1 |
+| Python launcher | `skillguard version` | skillguard 0.1.1 |
 
 <p align="center">
-  <img src="docs/assets/screenshots/self-scan.png" width="900" alt="Self-scan: PASS with two low dependency advisories">
+  <img src="docs/assets/screenshots/self-scan.png" width="900" alt="Self-scan: PASS with four low dependency advisories">
 </p>
-<p align="center"><sub>SkillGuard scanning its own repository: PASS with two low unpinned-dependency advisories.</sub></p>
+<p align="center"><sub>SkillGuard scanning its own repository: PASS with four low unpinned-dependency advisories.</sub></p>
 
 <details>
 <summary><b>Expand: raw test output</b></summary>
@@ -826,7 +827,7 @@ Single binary, no runtime, fast startup; linear-time regex is safer for untruste
 <details>
 <summary><b>Why not LLM-based semantic scanning?</b></summary>
 
-LLM analysis is useful as a supplement, but a poor sole gate: non-deterministic, often network/model dependent, and hard to reproduce in CI. 0.1.0 focuses on deterministic, offline, explainable static rules; semantic analysis is on the roadmap as an optional offline mode.
+LLM analysis is useful as a supplement, but a poor sole gate: non-deterministic, often network/model dependent, and hard to reproduce in CI. 0.1.x focuses on deterministic, offline, explainable static rules; semantic analysis is on the roadmap as an optional offline mode.
 
 </details>
 
@@ -847,14 +848,14 @@ Yes, but if there is no `SKILL.md`, the root is treated as one Skill. For large 
 <details>
 <summary><b>Which platforms are supported?</b></summary>
 
-The source builds on Windows / Linux / macOS, and the CI matrix runs tests and release builds on all three. Prebuilt binaries, npm platform packages, and Python wheels depend on the actual Release artifacts. The 0.1.0 local verification was performed on Windows 11 x64.
+The source builds on Windows / Linux / macOS, and the CI matrix runs tests and release builds on all three. Prebuilt binaries, npm platform packages, and Python wheels depend on the actual Release artifacts. The 0.1.1 local verification was performed on Windows 11 x64; Releases ship four platform binaries.
 
 </details>
 
 <details>
 <summary><b>Are npm / PyPI packages published?</b></summary>
 
-0.1.0 is published to npm / PyPI, currently as Windows x64; Linux/macOS platform packages are pending. Use the commands below on Windows; build from source on other platforms.
+0.1.1 is published to npm / PyPI with Windows, Linux, and macOS x64/arm64 support. Use the commands below on those platforms; build from source for other architectures.
 
 </details>
 
@@ -878,7 +879,7 @@ Write a JSON rule pack and load it with `--rules`, or place it in `rules_dir`. S
 
 > Direction, not a promise; priorities will follow real usage feedback.
 
-- **0.2**: rule baselines / diff scanning, more supply-chain rules, a rule test framework, platform packages.
+- **0.2**: rule baselines / diff scanning, more supply-chain rules, a rule test framework, and more runtime/agent integrations.
 - **0.3**: optional offline LLM semantic analysis for rewritten prompt injection.
 - **1.0**: runtime agent gateway, tool-call approvals, central policy and audit console.
 
@@ -927,7 +928,7 @@ Report security issues privately via [SECURITY.md](SECURITY.md); do not open a p
 3. Run `cd packages/npm && npm pack` and confirm `vendor/<platform>/skillguard[.exe]` is included;
 4. Run `npm publish --access public`.
 
-For multi-platform publishing, build one platform sub-package per `os/arch` (for example `@skillguard/cli-win32-x64`) and reference them from the main package via `optionalDependencies`; `packages/npm/lib/resolve.js` already has the resolution logic.
+The current multi-platform release uses one npm package containing all platform binaries plus separate platform wheels for PyPI; split into platform sub-packages only if package size becomes a problem.
 
 ### Python
 

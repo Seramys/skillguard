@@ -17,6 +17,9 @@
     "packages/npm/vendor",
     "packages/python/src/skillguard/_bin",
     "docs",
-    "README*.md"
+    "README*.md",
+    "*.egg-info",
+    "packages/python/dist",
+    "packages/npm/*.tgz"
   ]
 }

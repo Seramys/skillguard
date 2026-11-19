@@ -82,7 +82,7 @@ cargo build --release
 
 ## インストール
 
-> **0.1.0 の現状**：単一バイナリ、Node ランチャー、Python ランチャーはこのリポジトリで検証済みです。npm / PyPI の 0.1.0 は公開済み（Windows x64）。Linux/macOS のプラットフォームパッケージは今後追加されます。
+> **0.1.1 の現状**：npm / PyPI の 0.1.1 は公開済みで、win32-x64 / linux-x64 / darwin-x64 / darwin-arm64 を含みます。GitHub Release v0.1.1 には 4 つのプラットフォームバイナリと SHA256SUMS があります。
 
 ### 1. 単一バイナリ（推奨）
 
@@ -94,10 +94,10 @@ bash scripts/build.sh     # dist/<platform>-<arch>/ にコピー
 
 ### 2. Node
 
-公開済み（Windows x64）：
+公開済み（マルチプラットフォーム）：
 
 ```bash
-npx --yes seramys-skillguard@0.1.0 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.1.1 scan ./skills --fail-on high
 ```
 
 リポジトリ内での検証：
@@ -206,11 +206,11 @@ skillguard version
   <img src="docs/assets/screenshots/verification-en.png" width="980" alt="ローカル検証レポート">
 </p>
 
-環境：Windows 11 x64、SkillGuard 0.1.0、2026-11-19。
+環境：Windows 11 x64、SkillGuard 0.1.1、2026-11-19。
 
 - テスト：35 件成功（19 ユニット + 16 E2E）
 - Clippy：警告 0
-- 自己スキャン：PASS（low 2 件のみ）
+- 自己スキャン：PASS（low 4 件のみ）
 - SARIF：2.1.0、29 ルール、4 結果
 
 その他の数値と生ログは [English README](README_EN.md#verification) を参照してください。

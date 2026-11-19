@@ -96,13 +96,13 @@ echo $?   # 0 = 通过，1 = 达到阈值，2 = 参数/配置/规则/IO 错误
 
 ## 安装
 
-> **当前状态（0.1.0）**：npm / PyPI 的 0.1.0 已发布，当前产物为 **Windows x64**；Linux/macOS 平台包待补。单文件二进制、Node 启动器和 Python 启动器均已在本地验证；其他平台请先用源码构建。
+> **当前状态（0.1.1）**：npm / PyPI 的 0.1.1 已发布，包含 **win32-x64、linux-x64、darwin-x64、darwin-arm64**；GitHub Release v0.1.1 提供 4 个平台二进制和 SHA256SUMS。单文件二进制、Node 启动器和 Python 启动器均已验证。
 
 ### 方式一：单文件二进制（推荐）
 
 单文件、无运行时依赖，适合本机扫描和 CI。
 
-**从 Release 下载**（发布后）：下载对应平台的 `skillguard` / `skillguard.exe`，放到 `PATH` 或项目目录。
+**从 Release 下载**（v0.1.1）：下载对应平台的 `skillguard` / `skillguard.exe`，放到 `PATH` 或项目目录。
 
 **从源码构建**：
 
@@ -138,10 +138,10 @@ bash scripts/build.sh
 
 ### 方式二：Node 生态
 
-已发布（Windows x64），一行命令：
+已发布（多平台），一行命令：
 
 ```bash
-npx --yes seramys-skillguard@0.1.0 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.1.1 scan ./skills --fail-on high
 ```
 
 全局安装：
@@ -163,18 +163,18 @@ node packages/npm/bin/skillguard.js scan ./tests/fixtures/clean-skill --no-color
 </p>
 <p align="center"><sub>Node 启动器只是薄壳，扫描仍由同一份 Rust 单文件二进制完成。</sub></p>
 
-npm 包会把平台二进制放在 `vendor/<platform>-<arch>/`。当前仓库内的 `npm pack` 已验证包含 `vendor/win32-x64/skillguard.exe`；多平台发布建议使用平台子包，`packages/npm/lib/resolve.js` 已预留解析逻辑。
+npm 包把 4 个平台二进制放在 `vendor/<platform>-<arch>/`。0.1.1 已包含 `win32-x64`、`linux-x64`、`darwin-x64`、`darwin-arm64`，`packages/npm/lib/resolve.js` 会按当前平台选择。
 
 ### 方式三：Python 生态
 
-已发布（Windows x64）：
+已发布（多平台）：
 
 ```bash
 pip install seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
 
-> 0.1.0 的 wheel 按构建平台打包；当前本地产物为 Windows x64。Linux/macOS 请从源码构建或等待对应平台 wheel。
+> 0.1.1 为 Windows、Linux、macOS 提供独立的平台 wheel（win_amd64、manylinux_2_17_x86_64、macOS arm64/universal2）。
 
 **仓库内验证**：
 
@@ -368,7 +368,7 @@ skillguard scan ./tests/fixtures/exfil-skill --format json --json-pretty
 ```json
 {
   "tool": "skillguard",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "root": "/path/to/exfil-skill",
   "summary": {
     "skills": 1,
@@ -685,9 +685,9 @@ jobs:
           sarif_file: skillguard.sarif
 ```
 
-### 使用本仓库的 composite Action（npm 包已发布，当前 Windows x64）
+### 使用本仓库的 composite Action（npm 包已发布，含 4 平台二进制）
 
-`action.yml` 已包含在仓库中，当前通过 `npx seramys-skillguard` 运行；npm 包已发布，但当前仅内含 win32-x64：
+`action.yml` 已包含在仓库中，当前通过 `npx seramys-skillguard` 运行；npm 包 0.1.1 已内含 4 个平台二进制：
 
 ```yaml
 - uses: Seramys/skillguard@main
@@ -699,7 +699,7 @@ jobs:
 
 > composite Action 目前用于运行扫描和设置退出码；它不会自动产出 SARIF 文件。需要 Code Scanning 时，请使用上面的本地构建工作流，或自行把 SARIF 写入文件并上传。
 
-> 当前 npm 包仅内置 win32-x64 二进制；在 Linux/macOS runner 上请使用上面的本地构建工作流。
+> npm 包 0.1.1 已包含 win32-x64、linux-x64、darwin-x64、darwin-arm64；Action 可在 ubuntu/windows/macos runner 上使用。
 
 ### 通用 CI
 
@@ -727,22 +727,23 @@ skillguard scan ./skills --fail-on high
 </p>
 <p align="center"><sub>本地验证报告：35 个测试、0 条 clippy 警告、自扫描 PASS、SARIF 2.1.0 有效。</sub></p>
 
-验证环境：Windows 11 x64，SkillGuard 0.1.0，2026-11-19。
+验证环境：Windows 11 x64，SkillGuard 0.1.1，2026-11-19。
 
 | 检查项 | 命令 | 结果 |
 |---|---|---|
 | 单元测试 | `cargo test` | 19 passed · 0 failed |
 | 端到端测试 | `cargo test` | 16 passed · 0 failed |
 | 静态检查 | `cargo clippy --all-targets -- -D warnings` | 0 warnings |
-| 自扫描 | `dist\win32-x64\skillguard.exe scan .` | PASS · 2 low |
+| 自扫描 | `dist\win32-x64\skillguard.exe scan .` | PASS · 4 low |
 | SARIF | `--format sarif` | valid 2.1.0 · 29 rules · 4 results |
-| npm 包 | `npm pack --dry-run` | 5 files · 621.0 kB · binary included |
-| Python 启动器 | `skillguard version` | skillguard 0.1.0 |
+| npm 包 | `npm pack --dry-run` | 8 files · 4 platform binaries · bundled |
+| PyPI | `twine upload` | 4 platform wheels · 0.1.1 |
+| Python 启动器 | `skillguard version` | skillguard 0.1.1 |
 
 <p align="center">
-  <img src="docs/assets/screenshots/self-scan.png" width="900" alt="SkillGuard 自扫描：PASS，2 条 low 依赖提示">
+  <img src="docs/assets/screenshots/self-scan.png" width="900" alt="SkillGuard 自扫描：PASS，4 条 low 依赖提示">
 </p>
-<p align="center"><sub>用 SkillGuard 扫描自己的仓库：PASS，仅 2 条 low 级依赖未锁定提示。</sub></p>
+<p align="center"><sub>用 SkillGuard 扫描自己的仓库：PASS，仅有 4 条 low 级依赖未锁定提示。</sub></p>
 
 <details>
 <summary><b>展开：原始测试输出</b></summary>
@@ -825,7 +826,7 @@ tests/fixtures/
 <details>
 <summary><b>为什么不用 LLM 做语义扫描？</b></summary>
 
-LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不确定、需要网络/模型、难以在 CI 中稳定复现。0.1.0 先把确定性、离线、可解释的静态规则做好；语义分析在路线图中，会以可选、离线的方式加入。
+LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不确定、需要网络/模型、难以在 CI 中稳定复现。0.1.x 先把确定性、离线、可解释的静态规则做好；语义分析在路线图中，会以可选、离线的方式加入。
 
 </details>
 
@@ -846,14 +847,14 @@ LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不�
 <details>
 <summary><b>支持哪些平台？</b></summary>
 
-源码支持 Windows / Linux / macOS；CI 矩阵在三平台运行测试和 release 构建。预编译单文件、npm 平台包和 Python wheel 以实际 Release / 发布产物为准。当前 0.1.0 的本地验证在 Windows 11 x64 完成。
+源码支持 Windows / Linux / macOS；CI 矩阵在三平台运行测试和 release 构建。预编译单文件、npm 平台包和 Python wheel 以实际 Release / 发布产物为准。当前 0.1.1 的本地验证在 Windows 11 x64 完成；Release 提供四个平台二进制。
 
 </details>
 
 <details>
 <summary><b>npm / PyPI 已经发布了吗？</b></summary>
 
-0.1.0 已发布到 npm / PyPI，当前为 Windows x64；Linux/macOS 平台包待补。Windows 上可以直接使用下面的命令；其他平台请先源码构建。
+0.1.1 已发布到 npm / PyPI，包含 Windows、Linux、macOS x64/arm64。Windows/Linux/macOS 均可直接安装；其他架构请源码构建。
 
 </details>
 
@@ -877,7 +878,7 @@ LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不�
 
 > 以下是方向，不是承诺；优先级会根据真实使用反馈调整。
 
-- **0.2**：规则基线/差异扫描、更多供应链规则、规则测试框架、平台包发布。
+- **0.2**：规则基线/差异扫描、更多供应链规则、规则测试框架、更多运行时/Agent 集成。
 - **0.3**：可选的离线 LLM 语义分析，用于识别改写过的提示注入。
 - **1.0**：运行时 Agent 网关、工具调用审批、集中策略与审计控制台。
 
@@ -926,7 +927,7 @@ cargo test
 3. `cd packages/npm && npm pack` 检查包内包含 `vendor/<platform>/skillguard[.exe]`；
 4. `npm publish --access public`。
 
-多平台发布建议为每个 `os/arch` 生成平台子包（例如 `@skillguard/cli-win32-x64`），主包通过 `optionalDependencies` 引用；`packages/npm/lib/resolve.js` 已预留解析逻辑。
+当前多平台发布采用“一个 npm 包内含全部平台二进制 + 每个平台独立 wheel”的方式；如果后续包体积成为问题，再拆平台子包。
 
 ### Python
 
