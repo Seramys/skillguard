@@ -1,0 +1,20 @@
+{
+  "fail_on": "high",
+  "min_severity": "low",
+  "ignore_rules": [],
+  "allow_domains": [],
+  "max_file_size_kb": 512,
+  "exclude": [
+    ".venv",
+    "target",
+    "dist",
+    "artifacts",
+    "node_modules",
+    "tests/fixtures",
+    "rules",
+    "examples",
+    "README.md",
+    "packages/npm/vendor",
+    "packages/python/src/skillguard/_bin"
+  ]
+}

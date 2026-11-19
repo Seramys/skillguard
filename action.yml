@@ -1,0 +1,31 @@
+name: SkillGuard
+description: Scan AI agent skills for prompt injection, excessive permissions, secrets and supply-chain risks.
+branding:
+  icon: shield
+  color: red
+inputs:
+  path:
+    description: Path to scan
+    required: false
+    default: "."
+  fail-on:
+    description: low|medium|high|critical|none
+    required: false
+    default: high
+  format:
+    description: text|json|sarif
+    required: false
+    default: sarif
+  version:
+    description: npm package version
+    required: false
+    default: "0.1.0"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+    - name: Run SkillGuard
+      shell: bash
+      run: npx --yes skillguard-cli@${{ inputs.version }} scan "${{ inputs.path }}" --format "${{ inputs.format }}" --fail-on "${{ inputs.fail-on }}"

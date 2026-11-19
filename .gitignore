@@ -1,0 +1,14 @@
+/target
+/dist
+/artifacts
+/.venv
+/node_modules
+*.sarif
+*.egg-info/
+build/
+packages/python/src/skillguard/_bin/
+packages/npm/vendor/
+packages/npm/platforms/
+__pycache__/
+*.pyc
+.DS_Store

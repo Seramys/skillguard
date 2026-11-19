@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "rules": [
+    {
+      "id": "ACME-NET-001",
+      "title": "禁止访问未批准的第三方域名",
+      "severity": "high",
+      "category": "policy",
+      "description": "示例企业策略：Skill 不得连接未批准的第三方 API。",
+      "remediation": "改用公司网关，或在 allow_domains 中申请白名单。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)https?://[^\\s\"']*evil\\.example\\.com"
+      }
+    }
+  ]
+}

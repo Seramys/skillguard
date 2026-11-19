@@ -1,0 +1,422 @@
+{
+  "version": "1",
+  "rules": [
+    {
+      "id": "SG-PI-001",
+      "title": "提示注入：忽略既有指令",
+      "severity": "high",
+      "category": "prompt-injection",
+      "description": "Skill 文本试图覆盖、绕过或忽略上层系统/开发者指令。",
+      "remediation": "删除该指令。Skill 不应修改系统级约束，也不应要求 Agent 忽略已有规则。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "references": ["https://owasp.org/www-project-top-10-for-large-language-model-applications/"],
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\b(ignore|disregard|forget|override|bypass)\\b[^\\n]{0,60}\\b(previous|prior|above|system|developer|original|safety)\\b[^\\n]{0,30}\\b(instruction|prompt|rule|message|guardrail)s?\\b"
+      }
+    },
+    {
+      "id": "SG-PI-002",
+      "title": "提示注入：套取系统提示词",
+      "severity": "high",
+      "category": "prompt-injection",
+      "description": "Skill 文本试图让 Agent 泄露系统提示词、开发者消息或内部指令。",
+      "remediation": "删除套取提示词的指令；不要在任何 Skill 中要求输出系统消息。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\b(reveal|print|show|repeat|output|leak|dump|expose)\\b[^\\n]{0,50}\\b(system prompt|system message|hidden prompt|developer message|internal instruction)s?\\b"
+      }
+    },
+    {
+      "id": "SG-PI-003",
+      "title": "提示注入：对用户隐瞒行为",
+      "severity": "high",
+      "category": "prompt-injection",
+      "description": "Skill 要求 Agent 不要告知用户、操作员或管理员其真实行为，常见于恶意技能。",
+      "remediation": "删除隐瞒指令。任何对系统、文件或网络的修改都应对用户可见。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\b(do not|don't|never)\\b[^\\n]{0,40}\\b(tell|inform|notify|mention|reveal|show|warn)\\b[^\\n]{0,40}\\b(user|human|operator|admin|owner)\\b"
+      }
+    },
+    {
+      "id": "SG-PI-004",
+      "title": "提示注入：角色劫持",
+      "severity": "medium",
+      "category": "prompt-injection",
+      "description": "Skill 文本试图切换 Agent 身份或进入越狱/无限制模式。",
+      "remediation": "移除角色劫持语句，保持 Skill 的职责边界。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\b(you are now|from now on|pretend to be|jailbreak|DAN mode|developer mode|unrestricted mode)\\b"
+      }
+    },
+    {
+      "id": "SG-PI-005",
+      "title": "提示注入：绕过人工确认",
+      "severity": "medium",
+      "category": "prompt-injection",
+      "description": "Skill 要求 Agent 在未经询问或确认的情况下自动执行危险操作。",
+      "remediation": "保留人工确认环节；高风险操作必须显式征求用户同意。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\b(always|must|automatically)\\b[^\\n]{0,40}\\b(run|execute|call|invoke|install|download|send)\\b[^\\n]{0,50}\\b(without|no)\\b[^\\n]{0,25}\\b(asking|confirm|confirmation|approval|permission|review|consent)\\b"
+      }
+    },
+    {
+      "id": "SG-PI-006",
+      "title": "隐藏字符：零宽/双向控制符",
+      "severity": "high",
+      "category": "obfuscation",
+      "description": "检测到零宽字符、双向文本控制符或 Unicode 标签字符，可能用于隐藏指令。",
+      "remediation": "删除隐藏字符，并以纯文本审查该 Skill 的完整内容。",
+      "applies_to": ["text"],
+      "max_matches": 1,
+      "match": {
+        "type": "hidden_unicode"
+      }
+    },
+    {
+      "id": "SG-PI-007",
+      "title": "混淆载荷：大段 Base64",
+      "severity": "medium",
+      "category": "obfuscation",
+      "description": "检测到大段 Base64 数据。若解码后包含命令或网络地址，将升级为严重。",
+      "remediation": "改为可审查的明文脚本；如确需编码，请说明来源并提供校验值。",
+      "applies_to": ["text"],
+      "max_matches": 2,
+      "match": {
+        "type": "base64_blob",
+        "min_length": 120
+      }
+    },
+    {
+      "id": "SG-PERM-001",
+      "title": "权限过大：声明 Shell 执行能力",
+      "severity": "medium",
+      "category": "permissions",
+      "description": "Skill 的 allowed-tools/tools 声明了 shell、终端或进程执行能力。",
+      "remediation": "只授予完成任务所需的最小工具集；执行类工具应配合沙箱和人工确认。",
+      "applies_to": ["skill_md", "text"],
+      "max_matches": 2,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\b(allowed[-_ ]?tools?|tools?)\\b[^\\n]{0,100}\\b(bash|shell|exec|terminal|powershell|cmd\\.exe|subprocess|os\\.system|child_process)\\b"
+      }
+    },
+    {
+      "id": "SG-PERM-002",
+      "title": "敏感路径访问",
+      "severity": "high",
+      "category": "permissions",
+      "description": "Skill 引用了 SSH 密钥、云凭证、浏览器 Cookie、钱包等敏感路径。",
+      "remediation": "移除对敏感路径的访问；如确需读取，改为显式配置并由用户授权。",
+      "applies_to": ["skill_md", "text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(~\\/\\.ssh|\\.ssh\\/|id_rsa|id_ed25519|\\.aws\\/credentials|\\.config\\/gcloud|\\.kube\\/config|\\.npmrc|\\.pypirc|\\.git-credentials|wallet\\.dat|Login Data|Cookies|Keychain|/etc/(passwd|shadow)|\\.docker\\/config\\.json|~\\/\\.config\\/gh|(^|[\\s\"'/])\\.env\\b)"
+      }
+    },
+    {
+      "id": "SG-PERM-003",
+      "title": "网络权限过宽",
+      "severity": "medium",
+      "category": "permissions",
+      "description": "Skill 声明允许访问任意域名或全网，缺少目标白名单。",
+      "remediation": "改为显式域名白名单，并限制请求方法与返回数据的使用范围。",
+      "applies_to": ["skill_md", "text"],
+      "max_matches": 2,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\b(allowed[-_ ]?domains?|allowlist|network|hosts?)\\b[^\\n]{0,40}([\"']\\*[\"']|any domain|all domains?|0\\.0\\.0\\.0/0)"
+      }
+    },
+    {
+      "id": "SG-SEC-001",
+      "title": "私钥泄露",
+      "severity": "critical",
+      "category": "secret",
+      "description": "Skill 中包含私钥块。私钥一旦进入 Agent 上下文或被上传，应立即视为泄露。",
+      "remediation": "立即吊销并轮换该密钥，从仓库历史中清除，改用密钥管理服务。",
+      "applies_to": ["text"],
+      "max_matches": 2,
+      "match": {
+        "type": "regex",
+        "pattern": "-----BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY-----"
+      }
+    },
+    {
+      "id": "SG-SEC-002",
+      "title": "硬编码 API 密钥",
+      "severity": "high",
+      "category": "secret",
+      "description": "检测到常见云厂商或代码托管平台的密钥前缀。",
+      "remediation": "吊销并轮换密钥；改用环境变量或密钥管理服务，不要写入 Skill。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\b(sk-[A-Za-z0-9]{20,}|sk-proj-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|xox[baprs]-[A-Za-z0-9-]{10,}|glpat-[A-Za-z0-9_-]{20,})\\b"
+      }
+    },
+    {
+      "id": "SG-SEC-003",
+      "title": "高熵密钥赋值",
+      "severity": "medium",
+      "category": "secret",
+      "description": "检测到形如 token/secret/password 的高熵赋值，可能是硬编码凭证。",
+      "remediation": "确认是否为真实凭证；如为真，吊销并改为密钥管理服务注入。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "secret_entropy",
+        "min_length": 20,
+        "threshold": 4.0,
+        "prefixes": []
+      }
+    },
+    {
+      "id": "SG-SEC-004",
+      "title": "凭证文件随包分发",
+      "severity": "high",
+      "category": "secret",
+      "description": "Skill 目录中包含 .env、凭证 JSON、私钥或证书文件。",
+      "remediation": "从 Skill 包中移除这些文件，并提供 .env.example 作为替代。",
+      "applies_to": ["path"],
+      "max_matches": 5,
+      "match": {
+        "type": "path_regex",
+        "pattern": "(?i)(^|/)(\\.env|\\.env\\.(local|production|prod|staging)|credentials(\\.json)?|id_rsa|id_ed25519|wallet\\.dat|Login Data|Cookies)$|(^|/).*\\.(pem|p12|pfx)$"
+      }
+    },
+    {
+      "id": "SG-NET-001",
+      "title": "可疑外联：Webhook/隧道",
+      "severity": "high",
+      "category": "network",
+      "description": "检测到 Discord/Telegram/Slack Webhook、临时文件、隧道或回连域名，常见于数据外传。",
+      "remediation": "移除该外联；如为合法集成，改为企业批准的服务并加入 allow_domains。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(discord(app)?\\.com/api/webhooks|api\\.telegram\\.org/bot|hooks\\.slack\\.com/services|pastebin\\.com/(raw|api)|transfer\\.sh|0x0\\.st|webhook\\.site|requestbin|ngrok(-free)?\\.(io|app)|interact\\.sh|burpcollaborator\\.net|oast\\.(fun|me|live))"
+      }
+    },
+    {
+      "id": "SG-NET-002",
+      "title": "可疑外联：裸 IP 地址",
+      "severity": "medium",
+      "category": "network",
+      "description": "Skill 直接连接 IP 地址而非域名，常见于 C2 或临时外传端点。私有/回环地址会自动忽略。",
+      "remediation": "确认该 IP 的归属；如非必要，改为带证书校验的正式域名。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\bhttps?://(\\d{1,3}\\.){3}\\d{1,3}(:\\d{1,5})?([/\\s\"']|$)"
+      }
+    },
+    {
+      "id": "SG-NET-003",
+      "title": "远程脚本直接执行",
+      "severity": "high",
+      "category": "network",
+      "description": "检测到 curl/wget 管道到 shell 的模式，攻击者可随时替换远端脚本。",
+      "remediation": "改为下载后校验签名/哈希，再执行固定版本。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\b(curl|wget)\\b[^\\n|;]{0,160}\\|\\s*(sudo\\s+)?(ba|z|da|k)?sh\\b"
+      }
+    },
+    {
+      "id": "SG-NET-004",
+      "title": "下载后执行/编码命令",
+      "severity": "critical",
+      "category": "network",
+      "description": "检测到下载内容交由解释器执行、PowerShell 编码命令或 base64 解码后执行。",
+      "remediation": "移除该行为；如为安装脚本，改为固定版本、校验哈希并人工审核。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(\\b(iwr|invoke-webrequest|curl|wget)\\b[^\\n]{0,160}\\|\\s*(iex|invoke-expression|python[0-9.]*|perl|ruby|node)\\b|powershell(\\.exe)?[^\\n]{0,100}\\s-(enc|encodedcommand)\\b|base64\\s+(-d|--decode)[^\\n]{0,60}\\|\\s*(ba|z)?sh\\b)"
+      }
+    },
+    {
+      "id": "SG-CMD-001",
+      "title": "破坏性命令",
+      "severity": "high",
+      "category": "command",
+      "description": "检测到 rm -rf /、全盘 chmod 777、mkfs、dd 写盘或 fork bomb 等破坏性操作。",
+      "remediation": "限制操作范围到工作目录；移除破坏性命令并要求人工确认。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(\\brm\\s+-[a-z]*r[a-z]*f\\b[^\\n]{0,20}\\s/(\\s|$|\\*)|:\\(\\)\\s*\\{\\s*:\\s*\\|\\s*:\\s*&\\s*\\}\\s*;\\s*:|chmod\\s+-R\\s+777\\s+/|mkfs\\.[a-z0-9]+\\s+/dev/|dd\\s+if=[^\\n]{0,40}\\s+of=/dev/(sd|nvme|disk))"
+      }
+    },
+    {
+      "id": "SG-CMD-002",
+      "title": "反弹 Shell",
+      "severity": "critical",
+      "category": "command",
+      "description": "检测到 nc/ncat/socat 或 /dev/tcp 反弹 shell 模式。",
+      "remediation": "立即移除；这是明确的远程控制后门行为。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(\\bnc\\b[^\\n]{0,40}\\s-[a-z]*e\\b|\\bncat\\b[^\\n]{0,40}\\s-e\\b|(ba|z)?sh\\s+-i\\s+>&\\s*/dev/tcp/|socat\\b[^\\n]{0,60}\\bexec:)"
+      }
+    },
+    {
+      "id": "SG-CMD-003",
+      "title": "持久化行为",
+      "severity": "high",
+      "category": "command",
+      "description": "检测到 crontab、LaunchAgent、计划任务或注册表 Run 键等持久化操作。",
+      "remediation": "移除持久化逻辑；Agent Skill 不应在用户不知情时长期驻留。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(\\bcrontab\\s+-[a-z]|/etc/cron\\.[a-z]+/|launchctl\\s+(load|bootstrap)|schtasks\\s+/create|reg\\s+add\\s+[^\\n]{0,120}\\\\Run\\b|systemctl\\s+enable)"
+      }
+    },
+    {
+      "id": "SG-SC-001",
+      "title": "依赖未锁定版本",
+      "severity": "low",
+      "category": "supply-chain",
+      "description": "安装命令未指定精确版本，可能被上游投毒或意外升级影响。",
+      "remediation": "锁定精确版本并校验哈希；在 Skill 中记录依赖清单。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\b(pip3?|npm|pnpm|yarn)\\s+(install|i|add)\\s+([A-Za-z0-9@._/-]+)",
+        "absent": "==|@[0-9]|@latest|@next|@\\^|@~|:\\d"
+      }
+    },
+    {
+      "id": "SG-SC-002",
+      "title": "安装生命周期脚本",
+      "severity": "medium",
+      "category": "supply-chain",
+      "description": "检测到 preinstall/postinstall 等 npm 生命周期脚本，可能在安装时执行任意代码。",
+      "remediation": "移除不必要的生命周期脚本；如必须保留，使用固定版本并审计脚本内容。",
+      "applies_to": ["config", "text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\"(pre|post)?install\"\\s*:\\s*[\"']"
+      }
+    },
+    {
+      "id": "SG-SC-003",
+      "title": "下载后赋权执行",
+      "severity": "high",
+      "category": "supply-chain",
+      "description": "检测到下载文件后立即 chmod +x 并执行的模式。",
+      "remediation": "改为从可信源下载固定版本，校验签名/哈希后再执行。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(curl|wget)\\s+[^\\n|;]{0,160}(-o|--output)\\s+[^\\n|;]{1,80}(&&|;)\\s*(chmod\\s+\\+x|bash|sh|\\./|source)"
+      }
+    },
+    {
+      "id": "SG-HYG-001",
+      "title": "Skill 元数据缺失",
+      "severity": "low",
+      "category": "hygiene",
+      "description": "SKILL.md frontmatter 缺少 name、description 或 version，影响可追溯性。",
+      "remediation": "补齐 name、description、version，并建议增加 author 与 license。",
+      "applies_to": ["skill_md"],
+      "max_matches": 5,
+      "match": {
+        "type": "frontmatter_missing",
+        "fields": ["name", "description", "version"]
+      }
+    },
+    {
+      "id": "SG-HYG-002",
+      "title": "包含可执行/安装包文件",
+      "severity": "high",
+      "category": "hygiene",
+      "description": "Skill 目录中包含 exe/dll/so/msi 等二进制或安装包，无法通过文本审查。",
+      "remediation": "移除二进制文件；如必须分发，提供源码、构建脚本和签名校验。",
+      "applies_to": ["path"],
+      "max_matches": 5,
+      "match": {
+        "type": "path_regex",
+        "pattern": "(?i)\\.(exe|dll|so|dylib|scr|msi|dmg|pkg|apk|jar|bin)$"
+      }
+    },
+    {
+      "id": "SG-HYG-003",
+      "title": "包含脚本类文件",
+      "severity": "low",
+      "category": "hygiene",
+      "description": "Skill 目录中包含 bat/cmd/ps1/vbs/hta/reg 等脚本文件，建议人工审查。",
+      "remediation": "确认脚本用途；高风险脚本应改为可审计的明文并限制权限。",
+      "applies_to": ["path"],
+      "max_matches": 5,
+      "match": {
+        "type": "path_regex",
+        "pattern": "(?i)\\.(bat|cmd|ps1|vbs|hta|reg)$"
+      }
+    },
+    {
+      "id": "SG-COMBO-001",
+      "title": "组合风险：读取敏感信息并外联",
+      "severity": "critical",
+      "category": "exfiltration",
+      "description": "同一 Skill 同时出现敏感路径访问/密钥与外部网络调用，符合数据外传特征。",
+      "remediation": "立即停止使用该 Skill，审查脚本与网络目标，轮换可能泄露的凭证。",
+      "applies_to": ["skill_md"],
+      "max_matches": 1,
+      "match": {
+        "type": "combo",
+        "groups": [
+          ["SG-PERM-002", "SG-SEC-001", "SG-SEC-003"],
+          ["SG-NET-001", "SG-NET-002", "SG-NET-003", "SG-NET-004"]
+        ],
+        "none_of": []
+      }
+    },
+    {
+      "id": "SG-COMBO-002",
+      "title": "组合风险：指令劫持并执行远程代码",
+      "severity": "critical",
+      "category": "execution",
+      "description": "同一 Skill 同时出现提示注入与反弹 Shell/下载执行，符合远程控制特征。",
+      "remediation": "立即隔离并删除该 Skill，检查 Agent 主机是否已被入侵。",
+      "applies_to": ["skill_md"],
+      "max_matches": 1,
+      "match": {
+        "type": "combo",
+        "groups": [
+          ["SG-PI-001", "SG-PI-002", "SG-PI-003", "SG-PI-004"],
+          ["SG-CMD-002", "SG-NET-004"]
+        ],
+        "none_of": []
+      }
+    }
+  ]
+}
