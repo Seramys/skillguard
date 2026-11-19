@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-"$ROOT/scripts/build.sh"
+bash "$ROOT/scripts/build.sh"
 
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*) PLAT="win32"; EXE="skillguard.exe" ;;
