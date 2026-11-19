@@ -12,3 +12,5 @@ packages/npm/platforms/
 __pycache__/
 *.pyc
 .DS_Store
+/packages/python/dist
+/packages/npm/*.tgz

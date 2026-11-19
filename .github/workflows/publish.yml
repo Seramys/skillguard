@@ -1,40 +1,35 @@
-name: Publish (Windows x64 preview)
+name: Publish (multi-platform preview)
 
-# Manual on purpose: 0.1.0 is already on npm/PyPI, and current packages are Windows-only.
-# After the multi-platform packaging matrix lands, switch this to release-triggered publishing.
+# Manual while the platform matrix is being validated. Run with publish=false
+# to build/test/package all platforms without touching npm/PyPI. After a
+# successful build-only run, bump the version and run with publish=true.
 on:
   workflow_dispatch:
     inputs:
       confirm_version:
-        description: "Type the exact version to publish (e.g. 0.1.1)"
+        description: "Type the exact version to build/publish (e.g. 0.1.1)"
         required: true
         type: string
+      publish:
+        description: "Actually publish to npm/PyPI (false = build and package only)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 jobs:
-  publish:
-    runs-on: windows-latest
-    timeout-minutes: 30
+  prepare:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          registry-url: https://registry.npmjs.org
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install Python build tools
-        shell: bash
-        run: python -m pip install --upgrade pip build twine
-
-      - name: Test
-        shell: bash
-        run: cargo test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Validate versions
         shell: bash
@@ -53,6 +48,7 @@ jobs:
           test "$cargo_version" = "$CONFIRM_VERSION"
 
       - name: Refuse to republish an existing version
+        if: ${{ inputs.publish == true }}
         shell: bash
         env:
           VERSION: ${{ inputs.confirm_version }}
@@ -68,11 +64,114 @@ jobs:
             exit 1
           fi
 
-      - name: Build npm package
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            plat: win32-x64
+            exe: skillguard.exe
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            plat: linux-x64
+            exe: skillguard
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            plat: darwin-x64
+            exe: skillguard
+          - os: macos-15
+            target: aarch64-apple-darwin
+            plat: darwin-arm64
+            exe: skillguard
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install musl toolchain
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Test
+        run: cargo test
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Collect binary
         shell: bash
-        run: bash scripts/package-npm.sh
+        run: |
+          set -euo pipefail
+          mkdir -p "dist/${{ matrix.plat }}"
+          cp "target/${{ matrix.target }}/release/${{ matrix.exe }}" "dist/${{ matrix.plat }}/${{ matrix.exe }}"
+          ls -l "dist/${{ matrix.plat }}/${{ matrix.exe }}"
+
+      - name: Install Python build tools
+        run: python -m pip install --upgrade pip build
+
+      - name: Build platform wheel
+        shell: bash
+        run: bash scripts/package-python-from-dist.sh
+
+      - name: Check wheel
+        shell: bash
+        run: ls -l packages/python/dist/*.whl
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.plat }}
+          path: dist
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.plat }}
+          path: packages/python/dist/*.whl
+          if-no-files-found: error
+
+  package-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Download platform binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: dist
+          merge-multiple: true
+
+      - name: Assemble multi-platform npm package
+        shell: bash
+        run: bash scripts/package-npm-all.sh
+
+      - name: Pack npm tarball
+        shell: bash
+        working-directory: packages/npm
+        run: npm pack
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: packages/npm/*.tgz
+          if-no-files-found: error
 
       - name: Publish npm
+        if: ${{ inputs.publish == true }}
         shell: bash
         working-directory: packages/npm
         env:
@@ -83,19 +182,40 @@ jobs:
           npm publish --access public
           rm -f .npmrc
 
-      - name: Build Python wheel
-        shell: bash
-        run: bash scripts/package-python.sh
-
-      - name: Check wheel
+      - name: Verify npm
+        if: ${{ inputs.publish == true }}
         shell: bash
         env:
-          PYTHONIOENCODING: utf-8
-          NO_COLOR: "1"
+          VERSION: ${{ inputs.confirm_version }}
         run: |
           set -euo pipefail
-          ls -l packages/python/dist/*.whl
-          python -m twine check packages/python/dist/*.whl
+          npm view "seramys-skillguard@$VERSION" version --registry=https://registry.npmjs.org/
+
+  publish-pypi:
+    if: ${{ inputs.publish == true }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download platform wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-*
+          path: wheels
+          merge-multiple: true
+
+      - name: Install twine
+        run: python -m pip install --upgrade twine
+
+      - name: Inspect wheels
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -l wheels/*.whl
+          python -m twine check wheels/*.whl
 
       - name: Publish PyPI
         shell: bash
@@ -106,12 +226,4 @@ jobs:
           NO_COLOR: "1"
         run: |
           set -euo pipefail
-          python -m twine upload packages/python/dist/*.whl
-
-      - name: Verify npm
-        shell: bash
-        env:
-          VERSION: ${{ inputs.confirm_version }}
-        run: |
-          set -euo pipefail
-          npm view "seramys-skillguard@$VERSION" version --registry=https://registry.npmjs.org/
+          python -m twine upload wheels/*.whl

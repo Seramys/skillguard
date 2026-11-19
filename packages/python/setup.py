@@ -9,6 +9,15 @@ class bdist_wheel(_bdist_wheel):
 
     def get_tag(self):
         _, _, plat = super().get_tag()
+        # The Linux binary is built as a static musl executable in CI. A
+        # manylinux tag keeps pip on glibc-based distros from rejecting it;
+        # the binary itself has no glibc dependency.
+        if plat.startswith("linux_"):
+            arch = plat.split("_", 1)[1]
+            if arch == "x86_64":
+                plat = "manylinux_2_17_x86_64"
+            elif arch == "aarch64":
+                plat = "manylinux_2_17_aarch64"
         return "py3", "none", plat
 
 
