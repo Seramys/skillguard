@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 460" width="1160" height="460" role="img" aria-labelledby="title desc">
+  <title id="title">SkillGuard</title>
+  <desc id="desc">Dark SkillGuard logo lockup: scan-frame shield mark and wordmark.</desc>
+  <g transform="translate(40 50) scale(0.37)">
+    <rect x="140" y="140" width="744" height="744" rx="44" fill="#0E1730" stroke="#E9EFFF" stroke-width="10"/>
+    <line x1="140" y1="232" x2="884" y2="232" stroke="#E9EFFF" stroke-width="8" opacity="0.9"/>
+    <circle cx="200" cy="186" r="12" fill="#FF7AA2"/>
+    <circle cx="242" cy="186" r="12" fill="#FFD05B"/>
+    <circle cx="284" cy="186" r="12" fill="#4ED6A1"/>
+    <g fill="none" stroke="#E9EFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M290 400 L290 340 Q290 320 310 320 L370 320"/>
+      <path d="M654 320 L714 320 Q734 320 734 340 L734 400"/>
+      <path d="M290 640 L290 700 Q290 720 310 720 L370 720"/>
+      <path d="M654 720 L714 720 Q734 720 734 700 L734 640"/>
+    </g>
+    <line x1="190" y1="520" x2="834" y2="520" stroke="#4FE0C0" stroke-width="8" stroke-linecap="round" stroke-dasharray="28 18"/>
+    <path d="M512 398 C548 418 584 426 612 430 L612 520 C612 582 570 622 512 648 C454 622 412 582 412 520 L412 430 C440 426 476 418 512 398 Z" fill="none" stroke="#0E1730" stroke-width="20" stroke-linejoin="round"/>
+    <path d="M512 398 C548 418 584 426 612 430 L612 520 C612 582 570 622 512 648 C454 622 412 582 412 520 L412 430 C440 426 476 418 512 398 Z" fill="#8B7CF6" stroke="#C9C0FF" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M468 520 L500 552 L562 478" fill="none" stroke="#FFFFFF" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M800 304 C804 326 814 336 836 340 C814 344 804 354 800 376 C796 354 786 344 764 340 C786 336 796 326 800 304 Z" fill="#B9AEFF"/>
+  </g>
+  <text x="470" y="218" font-family="Inter, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="104" font-weight="700" fill="#E9EFFF" letter-spacing="-3">SkillGuard</text>
+  <text x="474" y="284" font-family="Inter, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="30" fill="#A8B4D1" letter-spacing="0.4">AI Agent Skill Supply-Chain Security Scanner</text>
+  <line x1="474" y1="326" x2="1118" y2="326" stroke="#2A3555" stroke-width="2"/>
+  <rect x="474" y="354" width="500" height="52" rx="26" fill="#1A2544"/>
+  <text x="502" y="388" font-family="Inter, 'Segoe UI', 'Microsoft YaHei', sans-serif" font-size="22" fill="#B9AEFF">29 rules  ·  single binary  ·  SARIF 2.1.0</text>
+</svg>
