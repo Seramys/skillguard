@@ -82,6 +82,7 @@ jobs:
             target: x86_64-apple-darwin
             plat: darwin-x64
             exe: skillguard
+            wheel_platform: macosx_15_0_x86_64
           - os: macos-15-intel
             target: aarch64-apple-darwin
             plat: darwin-arm64
@@ -193,7 +194,15 @@ jobs:
           VERSION: ${{ inputs.confirm_version }}
         run: |
           set -euo pipefail
-          npm view "seramys-skillguard@$VERSION" version --registry=https://registry.npmjs.org/
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if npm view "seramys-skillguard@$VERSION" version --registry=https://registry.npmjs.org/; then
+              exit 0
+            fi
+            echo "npm registry not visible yet (attempt $attempt); retrying..." >&2
+            sleep 5
+          done
+          echo "npm package $VERSION not visible after retries" >&2
+          exit 1
 
   publish-pypi:
     if: ${{ inputs.publish == true }}
