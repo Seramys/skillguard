@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "threshold": "high",
+  "target_fpr": 0.05,
+  "min_recall_at_fpr": 0.9,
+  "max_fpr_upper": 0.1,
+  "samples": [
+    { "id": "tob-csv-summarizer", "label": "malicious", "path": "bench/samples/tob/skills/csv-summarizer", "tags": ["tob", "data-access", "padding"] },
+    { "id": "tob-context-loader", "label": "malicious", "path": "bench/samples/tob/skills/context-loader", "tags": ["tob", "container"] },
+    { "id": "tob-simple-formatter", "label": "malicious", "path": "bench/samples/tob/skills/simple-formatter", "tags": ["tob", "bytecode"] },
+    { "id": "tob-dev-env-setup", "label": "malicious", "path": "bench/samples/tob/skills/dev-env-setup", "tags": ["tob", "supply-chain", "semantic"] },
+
+    { "id": "zh-pi-ignore", "label": "malicious", "path": "bench/samples/zh/zh-pi-ignore", "tags": ["zh", "prompt-injection"] },
+    { "id": "zh-data-exfil", "label": "malicious", "path": "bench/samples/zh/zh-data-exfil", "tags": ["zh", "data-access", "network"] },
+    { "id": "zh-ssh-read", "label": "malicious", "path": "bench/samples/zh/zh-ssh-read", "tags": ["zh", "permissions"] },
+    { "id": "zh-curl-bash", "label": "malicious", "path": "bench/samples/zh/zh-curl-bash", "tags": ["zh", "remote-exec"] },
+    { "id": "zh-base64", "label": "malicious", "path": "bench/samples/zh/zh-base64", "tags": ["zh", "obfuscation"] },
+    { "id": "zh-hidden-unicode", "label": "malicious", "path": "bench/samples/zh/zh-hidden-unicode", "tags": ["zh", "obfuscation"] },
+    { "id": "zh-npm-registry", "label": "malicious", "path": "bench/samples/zh/zh-npm-registry", "tags": ["zh", "supply-chain", "semantic"] },
+    { "id": "zh-cmd-persistence", "label": "malicious", "path": "bench/samples/zh/zh-cmd-persistence", "tags": ["zh", "persistence"] },
+    { "id": "zh-docx-script", "label": "malicious", "path": "bench/samples/zh/zh-docx-script", "tags": ["zh", "container"] },
+    { "id": "zh-pyc-mismatch", "label": "malicious", "path": "bench/samples/zh/zh-pyc-mismatch", "tags": ["zh", "bytecode"] },
+
+    { "id": "zh-clean-csv", "label": "benign", "path": "bench/samples/zh/zh-clean-csv", "tags": ["zh", "clean"] },
+    { "id": "zh-clean-format", "label": "benign", "path": "bench/samples/zh/zh-clean-format", "tags": ["zh", "clean"] },
+    { "id": "zh-clean-json", "label": "benign", "path": "bench/samples/zh/zh-clean-json", "tags": ["zh", "clean"] },
+    { "id": "zh-clean-shell", "label": "benign", "path": "bench/samples/zh/zh-clean-shell", "tags": ["zh", "clean"] },
+    { "id": "zh-clean-test", "label": "benign", "path": "bench/samples/zh/zh-clean-test", "tags": ["zh", "clean"] },
+    { "id": "zh-clean-http", "label": "benign", "path": "bench/samples/zh/zh-clean-http", "tags": ["zh", "clean"] },
+    { "id": "zh-clean-npm", "label": "benign", "path": "bench/samples/zh/zh-clean-npm", "tags": ["zh", "clean"] },
+    { "id": "zh-clean-docs", "label": "benign", "path": "bench/samples/zh/zh-clean-docs", "tags": ["zh", "clean"] },
+    { "id": "zh-clean-agent", "label": "benign", "path": "bench/samples/zh/zh-clean-agent", "tags": ["zh", "clean"] },
+    { "id": "zh-clean-report", "label": "benign", "path": "bench/samples/zh/zh-clean-report", "tags": ["zh", "clean"] },
+
+    { "id": "fixture-clean", "label": "benign", "path": "tests/fixtures/clean-skill", "tags": ["fixture", "clean"] },
+    { "id": "fixture-collection-a", "label": "benign", "path": "tests/fixtures/collection/skill-a", "tags": ["fixture", "clean"] },
+    { "id": "fixture-prompt-injection", "label": "malicious", "path": "tests/fixtures/collection/skill-b", "tags": ["fixture", "prompt-injection"] }
+  ]
+}

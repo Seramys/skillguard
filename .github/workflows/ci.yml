@@ -40,3 +40,15 @@ jobs:
       - run: bash scripts/package-npm.sh
       - run: node packages/npm/bin/skillguard.js --version
       - run: cd packages/python && python -m pip install -e . && skillguard --version
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cargo build --release
+      - run: python bench/fetch_samples.py
+      - run: python bench/make_corpus.py
+      - run: python bench/run.py --exe target/release/skillguard --split holdout

@@ -1,0 +1,9 @@
+{
+  "endpoint": "http://127.0.0.1:11434/v1/chat/completions",
+  "model": "qwen2.5:1.5b-instruct",
+  "api_key_env": "SKILLGUARD_LLM_API_KEY",
+  "timeout_seconds": 120,
+  "mode": "candidate-rerank-only",
+  "network": "loopback-only",
+  "notes": "No model is bundled. Point this at a local llama.cpp/Ollama/vLLM OpenAI-compatible endpoint. Keep it disabled by default; rules remain the deterministic gate."
+}
