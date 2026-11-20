@@ -11,11 +11,11 @@
 
 Run SkillGuard before you install a Skill.
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE) [![Rust stable](https://img.shields.io/badge/Rust-stable-orange?logo=rust&style=flat-square)](https://www.rust-lang.org/) [![Node 18+](https://img.shields.io/badge/Node-18%2B-339933?logo=node.js&logoColor=white&style=flat-square)](packages/npm) [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white&style=flat-square)](packages/python) [![Tests](https://img.shields.io/badge/tests-35%20passing-17A673?style=flat-square)](#verification) [![Rules](https://img.shields.io/badge/rules-29-5B6CFF?style=flat-square)](rules/core.json) [![SARIF 2.1.0](https://img.shields.io/badge/SARIF-2.1.0-8B7CF6?style=flat-square)](#output-formats) [![CI](https://github.com/Seramys/skillguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Seramys/skillguard/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE) [![Rust stable](https://img.shields.io/badge/Rust-stable-orange?logo=rust&style=flat-square)](https://www.rust-lang.org/) [![Node 18+](https://img.shields.io/badge/Node-18%2B-339933?logo=node.js&logoColor=white&style=flat-square)](packages/npm) [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white&style=flat-square)](packages/python) [![Tests](https://img.shields.io/badge/tests-79%20passing-17A673?style=flat-square)](#verification) [![Rules](https://img.shields.io/badge/rules-49-5B6CFF?style=flat-square)](rules/core.json) [![SARIF 2.1.0](https://img.shields.io/badge/SARIF-2.1.0-8B7CF6?style=flat-square)](#output-formats) [![CI](https://github.com/Seramys/skillguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Seramys/skillguard/actions/workflows/ci.yml)
 
 [简体中文](README.md) · [English](README_EN.md) · [日本語](README_JA.md) · [한국어](README_KO.md)
 
-[Quick start](#quick-start) · [What it scans](#what-it-scans) · [Rules](#built-in-rules-29) · [Architecture](#architecture) · [Verification](#verification)
+[Quick start](#quick-start) · [What it scans](#what-it-scans) · [Rules](#built-in-rules-49) · [Benchmark](#benchmark) · [Architecture](#architecture) · [Verification](#verification)
 
 </div>
 
@@ -95,9 +95,27 @@ Generate SARIF for GitHub Code Scanning:
 
 ---
 
+## Admission and evidence
+
+```bash
+skillguard lock ./my-skill --output skillguard.lock
+skillguard verify ./my-skill --lock skillguard.lock
+skillguard scan ./my-skill --policy .skillguard-policy.json --audit .skillguard-audit.jsonl
+skillguard scan ./my-skill --write-baseline baseline.json
+skillguard scan ./my-skill --baseline baseline.json
+```
+
+When a policy is supplied, its decision is authoritative: `fail_on` overrides the CLI threshold, `fail_on: none` disables severity blocking, and active exceptions are excluded from the decision. Expired exceptions are inactive. Unknown fields, an invalid `fail_on`, empty owner/reason, or an invalid expiry fail closed with exit code 2.
+
+`lock` writes `skillguard-lock/v2` with content fingerprints, rules/policy hashes, tool version, and finding digests. Metadata files (lock, baseline, audit, receipt) are excluded from the fingerprint, so `lock .` does not invalidate itself. `--audit` writes `skillguard-audit/v2` with reasons and a `prev_hash`/`entry_hash` chain. `install` receipts use `skillguard-receipt/v2` with `receipt_hash` and an optional HMAC-SHA256 signature when `SKILLGUARD_RECEIPT_KEY` is set.
+
+The experimental `install` rail accepts only HTTPS GitHub sources with a 40-character commit SHA, enforces timeouts/redirect limits, caps ZIP entries, per-entry/total size and compression ratio, and rejects absolute paths, `..`, drive letters, and escaping paths.
+
+---
+
 ## Installation
 
-> **Current status (0.1.1)**: npm / PyPI 0.1.1 is published with **win32-x64, linux-x64, darwin-x64, and darwin-arm64**; GitHub Release v0.1.1 ships 4 platform binaries and SHA256SUMS. The single binary, Node launcher, and Python launcher are verified.
+> **Version status**: `release/0.2.0` source contains 49 rules, policy authority, lock/audit hash chains, and install hardening. npm / PyPI / GitHub Release currently publish **0.1.1** (win32-x64, linux-x64, darwin-x64, darwin-arm64). Build from source to try 0.2.0 before it is published.
 
 ### Option 1: single-file binary (recommended)
 
@@ -219,22 +237,23 @@ All three entry points share the same `rules/core.json` and `engine.rs`; there i
 
 | Category | Rules | Typical signals |
 |---|---:|---|
-| Prompt injection | 5 | ignore previous instructions, reveal the system prompt, conceal behavior, role hijack, bypass confirmation |
-| Obfuscation | 2 | zero-width characters, bidirectional controls, Unicode tags, large Base64 blobs |
+| Prompt injection | 5 | ignore previous instructions, reveal the system prompt, conceal behavior, bypass confirmation, security reassurance |
+| Obfuscation | 11 | zero-width/bidi/tag characters, Base64, whitespace padding, pyc mismatch, container-embedded scripts, OOXML/PDF/SVG active content |
 | Excessive permissions | 3 | shell in `allowed-tools`, SSH/cloud/cookie/wallet paths, any-domain access |
 | Secrets | 4 | private key blocks, cloud API key prefixes, high-entropy assignments, `.env` / credential files |
 | Suspicious egress | 4 | Discord/Telegram/Slack webhooks, bare IPs, tunnels, `curl \| bash`, download-and-execute |
-| Dangerous commands | 3 | `rm -rf /`, reverse shells, crontab / LaunchAgent / registry persistence |
-| Supply chain | 3 | unpinned dependencies, npm lifecycle scripts, download + `chmod +x` + run |
+| Dangerous commands | 4 | `rm -rf /`, reverse shells, crontab / LaunchAgent / registry persistence, `find -exec` |
+| Supply chain | 4 | unpinned dependencies, npm lifecycle scripts, download + `chmod +x` + run, registry override |
+| MCP | 4 | unpinned npx/uvx, privileged Docker, auto-approve, shell-wrapped remote execution |
 | Package hygiene | 3 | missing frontmatter fields, exe/dll/so/msi, bat/cmd/ps1/vbs/hta/reg |
-| Exfiltration combo | 1 | sensitive access + external network |
-| Remote-execution combo | 1 | prompt injection + reverse shell / download-and-execute |
-| **Total** | **29** | JSON-defined rules; external packs are supported |
+| Data access | 2 | environment variable reads, bulk environment export |
+| Combo | 5 | sensitive read + egress, injection + remote execution, env + egress, reassurance + registry hijack, container + bulk execution |
+| **Total** | **49** | JSON-defined rules; external packs are supported |
 
 <p align="center">
-  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="Rule and severity coverage: 29 rules across 10 categories">
+  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="Rule and severity coverage: 49 rules across categories">
 </p>
-<p align="center"><sub>29 rules across 10 categories; combo rules correlate signals instead of matching a single string.</sub></p>
+<p align="center"><sub>49 rules; combo rules correlate signals instead of matching a single string.</sub></p>
 
 ### Why combo rules matter
 
@@ -245,20 +264,33 @@ Single-pattern rules are noisy and easy to bypass by splitting an attack across 
 
 A combo fires only when both signals are present and not suppressed. Suppressing either signal removes the combo.
 
-### Built-in rules (29)
+### Built-in rules (49)
 
 <details>
 <summary><b>Expand: full rule list</b></summary>
 
 | ID | Severity | Category | Detects |
 |---|---|---|---|
-| SG-PI-001 | high | prompt injection | ignore or bypass existing system instructions |
+| SG-PI-001 | high | prompt injection | ignore/bypass existing system instructions |
 | SG-PI-002 | high | prompt injection | extract the system prompt or internal instructions |
 | SG-PI-003 | high | prompt injection | hide behavior from the user or administrator |
-| SG-PI-004 | medium | prompt injection | role hijack / jailbreak mode |
 | SG-PI-005 | medium | prompt injection | bypass human confirmation and auto-execute |
+| SG-PI-008 | medium | prompt injection | security reassurance language |
 | SG-PI-006 | high | obfuscation | zero-width, bidirectional control, Unicode tag characters |
-| SG-PI-007 | medium | obfuscation | large Base64 blob (upgraded to critical when it decodes to commands) |
+| SG-PI-007 | medium | obfuscation | large Base64 blob (critical when it decodes to commands) |
+| SG-OBF-003 | high | obfuscation | whitespace padding hiding a tail payload |
+| SG-PYC-001 | high | obfuscation | pyc/source size or hash mismatch |
+| SG-PYC-002 | high | obfuscation | suspicious env/exec strings in pyc code objects |
+| SG-CONT-001 | high | obfuscation | scripts or executables embedded in docx/xlsx/zip |
+| SG-CONT-002 | high | obfuscation | vbaProject.bin / ActiveX / OLE in Office containers |
+| SG-CONT-003 | critical | obfuscation | OLE/CFB compound documents inside containers |
+| SG-CONT-004 | high | obfuscation | external relationships, templates, DDE, instrText, altChunk |
+| SG-PDF-001 | high | obfuscation | PDF JavaScript/OpenAction/Launch/embedded files |
+| SG-WEB-001 | high | obfuscation | SVG/HTML scripts, event handlers, javascript:, refresh |
+| SG-MCP-001 | high | MCP | unpinned npx/bunx/uvx/pipx startup |
+| SG-MCP-002 | high | MCP | privileged Docker / docker.sock / SYS_ADMIN |
+| SG-MCP-003 | high | MCP | autoApprove / alwaysAllow / wildcard approval |
+| SG-MCP-005 | high | MCP | bash -c / powershell wrapping curl/wget/IEX |
 | SG-PERM-001 | medium | permissions | `allowed-tools` declares shell/terminal/process execution |
 | SG-PERM-002 | high | permissions | SSH keys, cloud credentials, cookies, wallets |
 | SG-PERM-003 | medium | permissions | arbitrary domains / whole-internet access |
@@ -273,14 +305,21 @@ A combo fires only when both signals are present and not suppressed. Suppressing
 | SG-CMD-001 | high | command | `rm -rf /`, recursive `chmod 777`, mkfs, dd, fork bomb |
 | SG-CMD-002 | critical | command | nc/ncat/socat, `/dev/tcp` reverse shell |
 | SG-CMD-003 | high | command | crontab, LaunchAgent, scheduled task, registry Run key |
+| SG-CMD-004 | medium | command | `find -exec` bulk execution |
+| SG-DATA-001 | medium | data access | environment variable reads |
+| SG-DATA-002 | high | data access | bulk environment export |
 | SG-SC-001 | low | supply chain | unpinned pip/npm/pnpm/yarn installs |
 | SG-SC-002 | medium | supply chain | npm preinstall/postinstall lifecycle scripts |
 | SG-SC-003 | high | supply chain | download, `chmod +x`, and execute |
-| SG-HYG-001 | low | hygiene | frontmatter missing name/description/version |
+| SG-SUPPLY-004 | high | supply chain | npm/yarn registry points to a non-official host |
+| SG-HYG-001 | low | hygiene | frontmatter missing name/description |
 | SG-HYG-002 | high | hygiene | exe/dll/so/msi binaries or installers |
 | SG-HYG-003 | low | hygiene | bat/cmd/ps1/vbs/hta/reg scripts |
-| SG-COMBO-001 | critical | exfiltration | sensitive access + external network |
-| SG-COMBO-002 | critical | execution | prompt injection + reverse shell / download-and-execute |
+| SG-COMBO-001 | critical | combo | sensitive access + external network (exfiltration) |
+| SG-COMBO-002 | critical | combo | prompt injection + reverse shell/download (remote control) |
+| SG-COMBO-003 | critical | combo | bulk env reads + external network (credential exfiltration) |
+| SG-COMBO-004 | critical | combo | reassurance language + registry override (supply-chain hijack) |
+| SG-COMBO-005 | critical | combo | container-embedded script + `find -exec` (hidden payload) |
 
 </details>
 
@@ -296,6 +335,10 @@ skillguard rules list
 
 ```text
 skillguard scan <path> [options]
+skillguard lock <path> [--output skillguard.lock]
+skillguard verify <path> [--lock skillguard.lock]
+skillguard policy validate <file.json>
+skillguard install <source> [options]   # experimental P1
 skillguard rules list
 skillguard rules validate <file.json|dir>
 skillguard init [dir] [--force]
@@ -307,8 +350,12 @@ skillguard version
 | Option | Description | Default |
 |---|---|---|
 | `--format text\|json\|sarif` | Output format | `text` |
-| `--fail-on none\|low\|medium\|high\|critical` | Exit 1 when a finding reaches this severity | `high` |
+| `--fail-on none\|low\|medium\|high\|critical` | Exit 1 when a finding reaches this severity; policy `fail_on` overrides | `high` |
 | `--min-severity low\|medium\|high\|critical` | Hide findings below this severity | `low` |
+| `--policy <file>` | Policy gate; its decision controls the exit code | `.skillguard-policy.json` if present |
+| `--baseline <file>` | Hide findings recorded in a baseline | none |
+| `--write-baseline <file>` | Write current findings as a baseline | none |
+| `--audit <file>` | Append a hash-chained audit record | none |
 | `--ignore SG-XX-001[,SG-YY-*]` | Ignore rules by ID or prefix | none |
 | `--allow-domain <domain>` | Allow network findings for a domain (repeatable/comma-separated) | none |
 | `--rules <dir>` | Load extra JSON rule packs; same ID overrides built-in | none |
@@ -322,9 +369,9 @@ skillguard version
 
 | Code | Meaning |
 |---|---|
-| `0` | No finding reached the `--fail-on` threshold |
-| `1` | At least one finding reached the threshold |
-| `2` | Argument, config, rule, or IO error |
+| `0` | No finding reached the threshold; with a policy, `ALLOW` |
+| `1` | At least one finding reached the threshold; with a policy, `BLOCK` |
+| `2` | Argument, config, rule, policy, or IO error |
 
 ### Common commands
 
@@ -369,7 +416,7 @@ skillguard scan ./tests/fixtures/exfil-skill --format json --json-pretty
 ```json
 {
   "tool": "skillguard",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "root": "/path/to/exfil-skill",
   "summary": {
     "skills": 1,
@@ -407,7 +454,7 @@ Actual output keys are serialized alphabetically; the example above is reordered
 skillguard scan ./skills --format sarif > skillguard.sarif
 ```
 
-The SARIF document contains metadata for all 29 rules, `ruleId`, `level`, `physicalLocation`, and `partialFingerprints`. Upload it to GitHub Code Scanning:
+The SARIF document contains metadata for all 49 rules, `ruleId`, `level`, `physicalLocation`, and `partialFingerprints`. Upload it to GitHub Code Scanning:
 
 ```yaml
 - uses: github/codeql-action/upload-sarif@v3
@@ -415,7 +462,7 @@ The SARIF document contains metadata for all 29 rules, `ruleId`, `level`, `physi
     sarif_file: skillguard.sarif
 ```
 
-Local validation: SARIF `version` is `2.1.0`, `driver.name` is `SkillGuard`, 29 rules, and the exfil fixture produces 4 results.
+Local validation: SARIF `version` is `2.1.0`, `driver.name` is `SkillGuard`, 49 rules, and the exfil fixture produces 4 results.
 
 ---
 
@@ -703,7 +750,7 @@ jobs:
 | `path` | `.` | Directory to scan |
 | `fail-on` | `high` | `low` / `medium` / `high` / `critical` / `none` |
 | `format` | `sarif` | `text` / `json` / `sarif`, written to the run log |
-| `version` | `0.1.1` | npm package version |
+| `version` | `0.2.0` (available after npm publish; latest published is `0.1.1`) | npm package version |
 
 > The composite Action runs the scan and sets the exit code; it does not create a SARIF file. For Code Scanning, use `npx --yes seramys-skillguard@0.1.1 scan . --format sarif > skillguard.sarif`, or the local-build workflow above.
 
@@ -723,55 +770,92 @@ A non-zero exit code fails the job; SARIF is optional.
 
 - `cargo test`
 - `cargo build --release`
+- `python bench/run.py --exe target/release/skillguard --split all --no-imported` (public synthetic smoke gate)
 - Python wheel packaging + editable install
 - npm packaging + launcher version check
+
+---
+
+## Benchmark
+
+There are two suites; their results are not interchangeable.
+
+| Suite | In CI | Composition | Current result |
+|---|---|---|---|
+| Public smoke | yes | 27 base fixtures + 320 malicious / 520 benign generated samples | 335 / 532; recall 100%, FPR 0% |
+| Extended holdout | no | generated holdout + MaliciousSkillBench + reviewed ClawHub | 202 / 340; recall 64.9%, FPR 1.5% |
+
+The public suite is synthetic. Its 100% recall proves the harness and rules run; it is **not** a quality claim. The extended holdout is the quality number, but its real samples cannot be redistributed, so public CI does not run it.
+
+At the `high` operating point the extended holdout has 64.9% recall (131/202), 1.5% FPR (5/340), and a Wilson FPR upper bound of 3.4%. The 90% recall target is not met; most misses are MaliciousSkillBench rewritten malicious prompts. The regression floor is 64%, recorded in `bench/manifest.json`.
+
+```bash
+cargo build --release
+python bench/fetch_samples.py
+python bench/make_corpus.py
+python bench/run.py --exe target/release/skillguard --split all --no-imported
+
+# Extended quality suite (requires local authorized corpus)
+python bench/run.py --exe target/release/skillguard --split holdout \
+  --imported-manifest bench/imported/manifest.json
+```
+
+Committed summaries live in `bench/reports/`; raw per-sample reports are ignored.
 
 ---
 
 ## Verification
 
 <p align="center">
-  <img src="docs/assets/screenshots/verification-en.png" width="980" alt="Local verification report: 35 tests, 0 warnings, self-scan PASS">
+  <img src="docs/assets/screenshots/verification-en.png" width="980" alt="Local verification report (0.1.1 historical screenshot)">
 </p>
-<p align="center"><sub>Local verification: 35 tests, 0 clippy warnings, self-scan PASS, valid SARIF 2.1.0.</sub></p>
+<p align="center"><sub>0.1.1 historical verification screenshot; current 0.2.0 numbers are below.</sub></p>
 
-Local environment: Windows 11 x64, SkillGuard 0.1.1, 2026-11-19; the Action self-test runs on three GitHub Actions platforms (2026-11-20).
+Local environment: Windows 11 x64, SkillGuard 0.2.0 source, 2026-11-20; published binaries are 0.1.1. The Action self-test runs on three GitHub Actions platforms (2026-11-20).
 
 | Check | Command | Result |
 |---|---|---|
-| Unit tests | `cargo test` | 19 passed · 0 failed |
-| Integration tests | `cargo test` | 16 passed · 0 failed |
+| Unit tests | `cargo test` | 36 passed · 0 failed |
+| Integration tests | `cargo test` | 23 CLI + 11 guard + 9 install = 43 passed |
+| Total | `cargo test` | **79 passed · 0 failed** |
 | Lints | `cargo clippy --all-targets -- -D warnings` | 0 warnings |
-| Self-scan | `dist\win32-x64\skillguard.exe scan .` | PASS · 4 low |
-| SARIF | `--format sarif` | valid 2.1.0 · 29 rules · 4 results |
-| npm package | `npm pack --dry-run` | 8 files · 4 platform binaries · bundled |
-| PyPI | `twine upload` | 4 platform wheels · 0.1.1 |
-| Python launcher | `skillguard version` | skillguard 0.1.1 |
+| Formatting | `cargo fmt --check` | clean |
+| Self-scan | `target/release/skillguard scan .` | PASS · 0 high · 4 medium / 3 low |
+| SARIF | `--format sarif` | valid 2.1.0 · 49 rules · 7 results |
+| npm package | `npm pack --dry-run` | 0.2.0 metadata · 4 platform binaries |
+| PyPI | `twine upload` | 0.1.1 published; 0.2.0 build pending |
+| Python launcher | `skillguard version` | source 0.2.0; published 0.1.1 |
 | GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/runs/44661440348) | 3/3 passed · linux/windows/macos x64 |
 
 <p align="center">
-  <img src="docs/assets/screenshots/self-scan.png" width="900" alt="Self-scan: PASS with four low dependency advisories">
+  <img src="docs/assets/screenshots/self-scan.png" width="900" alt="Historical self-scan screenshot">
 </p>
-<p align="center"><sub>SkillGuard scanning its own repository: PASS with four low unpinned-dependency advisories.</sub></p>
+<p align="center"><sub>0.1.1 historical self-scan; 0.2.0 source self-scan is PASS with 0 high, 4 medium / 3 low.</sub></p>
 
 <details>
 <summary><b>Expand: raw test output</b></summary>
 
 ```text
-running 19 tests
-test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+running 36 tests
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
-running 16 tests
-test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+running 23 tests
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+running 11 tests
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+running 9 tests
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
 SARIF validation:
 
 ```text
 version 2.1.0
-tool SkillGuard
-rules 29
-results 4
+tool SkillGuard 0.2.0
+rules 49
+results 7
 schema https://json.schemastore.org/sarif-2.1.0.json
 ```
 
@@ -856,14 +940,14 @@ Yes, but if there is no `SKILL.md`, the root is treated as one Skill. For large 
 <details>
 <summary><b>Which platforms are supported?</b></summary>
 
-The source builds on Windows / Linux / macOS, and the CI matrix runs tests and release builds on all three. Prebuilt binaries, npm platform packages, and Python wheels depend on the actual Release artifacts. The 0.1.1 local verification was performed on Windows 11 x64; Releases ship four platform binaries.
+The source builds on Windows / Linux / macOS, and the CI matrix runs tests and release builds on all three. The 0.2.0 source was verified locally on Windows 11 x64; the published 0.1.1 Release ships four platform binaries, and npm/PyPI artifacts follow the actual publication.
 
 </details>
 
 <details>
 <summary><b>Are npm / PyPI packages published?</b></summary>
 
-0.1.1 is published to npm / PyPI with Windows, Linux, and macOS x64/arm64 support. Use the commands below on those platforms; build from source for other architectures.
+0.1.1 is published to npm / PyPI with Windows, Linux, and macOS x64/arm64 support. 0.2.0 is prepared on the `release/0.2.0` source branch but is not published yet; build from source until it is released.
 
 </details>
 

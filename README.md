@@ -11,7 +11,7 @@
 
 在给 Agent 装 Skill 之前，先跑一遍 SkillGuard。
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE) [![Rust stable](https://img.shields.io/badge/Rust-stable-orange?logo=rust&style=flat-square)](https://www.rust-lang.org/) [![Node 18+](https://img.shields.io/badge/Node-18%2B-339933?logo=node.js&logoColor=white&style=flat-square)](packages/npm) [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white&style=flat-square)](packages/python) [![Tests](https://img.shields.io/badge/tests-61%20passing-17A673?style=flat-square)](#验证) [![Rules](https://img.shields.io/badge/rules-51-5B6CFF?style=flat-square)](rules/core.json) [![SARIF 2.1.0](https://img.shields.io/badge/SARIF-2.1.0-8B7CF6?style=flat-square)](#输出格式) [![CI](https://github.com/Seramys/skillguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Seramys/skillguard/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE) [![Rust stable](https://img.shields.io/badge/Rust-stable-orange?logo=rust&style=flat-square)](https://www.rust-lang.org/) [![Node 18+](https://img.shields.io/badge/Node-18%2B-339933?logo=node.js&logoColor=white&style=flat-square)](packages/npm) [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white&style=flat-square)](packages/python) [![Tests](https://img.shields.io/badge/tests-79%20passing-17A673?style=flat-square)](#验证) [![Rules](https://img.shields.io/badge/rules-49-5B6CFF?style=flat-square)](rules/core.json) [![SARIF 2.1.0](https://img.shields.io/badge/SARIF-2.1.0-8B7CF6?style=flat-square)](#输出格式) [![CI](https://github.com/Seramys/skillguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Seramys/skillguard/actions/workflows/ci.yml)
 
 [简体中文](README.md) · [English](README_EN.md) · [日本語](README_JA.md) · [한국어](README_KO.md)
 
@@ -113,6 +113,10 @@ skillguard scan ./my-skill --write-baseline baseline.json
 skillguard scan ./my-skill --baseline baseline.json
 ```
 
+**策略是最终决策，不是提示。** 提供 `--policy` 时，`scan` 的退出码只由策略决策决定：`fail_on` 覆盖 CLI 阈值，`fail_on: none` 可以关闭严重度阻断，生效中的例外会让对应发现不再影响决策。过期例外自动失效；策略文件中的未知字段、非法 `fail_on`、空 owner/reason、非法到期日期都会 **fail closed**（退出码 2），不会静默放行。
+
+**证据链可校验。** `lock` 生成 `skillguard-lock/v2`：内容指纹排除 lock/baseline/audit/receipt 等元数据，记录规则包哈希、策略哈希、工具版本和每条发现的摘要；`lock` 自己生成的清单不会导致下一次 `verify` 误报。`--audit` 追加 `skillguard-audit/v2`，记录决策原因、规则/策略哈希、发现摘要，并用 `prev_hash` / `entry_hash` 串成哈希链；审计文件被改动后可以定位断点。`install` 使用 `skillguard-receipt/v2`，包含 `receipt_hash`；设置 `SKILLGUARD_RECEIPT_KEY` 后还会附加 HMAC-SHA256 签名。
+
 `.skillguard-policy.json` 示例：
 
 ```json
@@ -127,7 +131,7 @@ skillguard scan ./my-skill --baseline baseline.json
 }
 ```
 
-`--audit` 追加 JSONL 审计记录，包含动作、主体、决策、计数、策略文件和工具版本。
+策略文件本身也参与 `lock` / `audit` / `install` 的哈希；修改策略会改变证据链。`install` 只接受 HTTPS GitHub 源和 40 位 commit SHA，带连接/读取超时与重定向上限，限制 ZIP 条目数、解压比、单文件/总大小，并拒绝绝对路径、`..`、驱动器号和越界路径。
 
 ---
 
@@ -135,7 +139,7 @@ skillguard scan ./my-skill --baseline baseline.json
 
 > **定位说明**：`install` 是 P1 实验轨道，不属于 P0 核心。P0 默认使用 `lock` / `verify` / `policy` / `scan`；`install` 保留用于受控环境，默认不宣传、不替用户改变环境。
 
-> **当前状态（0.1.1）**：npm / PyPI 的 0.1.1 已发布，包含 **win32-x64、linux-x64、darwin-x64、darwin-arm64**；GitHub Release v0.1.1 提供 4 个平台二进制和 SHA256SUMS。单文件二进制、Node 启动器和 Python 启动器均已验证。
+> **版本状态**：`release/0.2.0` 源码已包含 49 条规则、策略权威性、lock/audit 哈希链和 install 加固；npm / PyPI / GitHub Release 当前已发布版本仍为 **0.1.1**（win32-x64、linux-x64、darwin-x64、darwin-arm64）。0.2.0 发布前，请用源码构建体验新能力。
 
 ### 方式一：单文件二进制（推荐）
 
@@ -257,23 +261,23 @@ bash scripts/build-all.sh     # 交叉编译矩阵；缺少工具链的目标会
 
 | 类别 | 规则数 | 典型信号 |
 |---|---:|---|
-| 提示注入 | 6 | 忽略既有指令、套取系统提示词、对用户隐瞒、角色劫持、绕过人工确认、安全保证话术 |
+| 提示注入 | 5 | 忽略既有指令、套取系统提示词、对用户隐瞒、绕过人工确认、安全保证话术 |
 | 混淆载荷 | 11 | 零宽字符、Base64、空白填充、pyc 篡改/危险字节码、容器内嵌脚本、OOXML 宏/OLE、PDF/SVG/HTML 主动内容 |
 | 权限过大 | 3 | `allowed-tools` 声明 Shell、访问 SSH/云凭证/Cookie/钱包、任意域名 |
 | 密钥与凭证 | 4 | 私钥块、云厂商 API Key 前缀、高熵赋值、`.env` / 凭证文件 |
 | 可疑外联 | 4 | Discord/Telegram/Slack Webhook、裸 IP、隧道、`curl \| bash`、下载后执行 |
 | 危险命令 | 4 | `rm -rf /`、反弹 Shell、crontab / LaunchAgent / 注册表持久化、`find -exec` |
 | 供应链 | 4 | 未锁定版本、npm 生命周期脚本、下载后 `chmod +x` 执行、覆盖 registry |
-| MCP 配置 | 5 | 未锁定 npx/uvx、Docker 高权限、自动批准、远程 URL、shell 包装远程执行 |
+| MCP 配置 | 4 | 未锁定 npx/uvx、Docker 高权限、自动批准、shell 包装远程执行 |
 | 包卫生 | 3 | frontmatter 缺字段、exe/dll/so/msi、bat/cmd/ps1/vbs/hta/reg |
 | 数据访问 | 2 | 读取环境变量、批量导出环境变量 |
 | 组合风险 | 5 | 敏感读取+外联、提示注入+远程执行、环境变量+外联、话术+registry 劫持、容器脚本+批量执行 |
-| **合计** | **51** | 规则均为 JSON 定义，可加载外部规则包 |
+| **合计** | **49** | 规则均为 JSON 定义，可加载外部规则包 |
 
 <p align="center">
-  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="51 条规则的类别与严重度分布">
+  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="49 条规则的类别与严重度分布">
 </p>
-<p align="center"><sub>51 条规则的类别与严重度分布；组合规则负责跨信号关联。</sub></p>
+<p align="center"><sub>49 条规则的类别与严重度分布；组合规则负责跨信号关联。</sub></p>
 
 ### 组合规则为什么重要
 
@@ -290,14 +294,13 @@ bash scripts/build-all.sh     # 交叉编译矩阵；缺少工具链的目标会
 ### 内置规则
 
 <details>
-<summary><b>展开：51 条内置规则完整列表</b></summary>
+<summary><b>展开：49 条内置规则完整列表</b></summary>
 
 | ID | 严重度 | 类别 | 检测内容 |
 |---|---|---|---|
 | SG-PI-001 | high | 提示注入 | 忽略/绕过既有系统指令 |
 | SG-PI-002 | high | 提示注入 | 套取系统提示词或内部指令 |
 | SG-PI-003 | high | 提示注入 | 要求对用户/管理员隐瞒行为 |
-| SG-PI-004 | medium | 提示注入 | 角色劫持、越狱模式 |
 | SG-PI-005 | medium | 提示注入 | 绕过人工确认自动执行 |
 | SG-PI-008 | medium | 提示注入 | 安全保证话术（“标准做法/已审计/不写凭证”） |
 | SG-PI-006 | high | 混淆 | 零宽字符、双向控制符、Unicode 标签 |
@@ -314,7 +317,6 @@ bash scripts/build-all.sh     # 交叉编译矩阵；缺少工具链的目标会
 | SG-MCP-001 | high | MCP | 未锁定版本的 npx/bunx/uvx/pipx 启动 |
 | SG-MCP-002 | high | MCP | Docker privileged/docker.sock/SYS_ADMIN |
 | SG-MCP-003 | high | MCP | autoApprove/alwaysAllow/通配批准 |
-| SG-MCP-004 | medium | MCP | 远程 HTTP(S) MCP 端点 |
 | SG-MCP-005 | high | MCP | bash -c / powershell 包装 curl/wget/IEX |
 | SG-PERM-001 | medium | 权限 | `allowed-tools` 声明 shell/终端/进程执行 |
 | SG-PERM-002 | high | 权限 | SSH、云凭证、Cookie、钱包等敏感路径 |
@@ -337,7 +339,7 @@ bash scripts/build-all.sh     # 交叉编译矩阵；缺少工具链的目标会
 | SG-SC-002 | medium | 供应链 | npm preinstall/postinstall 生命周期脚本 |
 | SG-SC-003 | high | 供应链 | 下载后 `chmod +x` 立即执行 |
 | SG-SUPPLY-004 | high | 供应链 | npm/yarn registry 指向非官方地址 |
-| SG-HYG-001 | low | 卫生 | frontmatter 缺少 name/description/version |
+| SG-HYG-001 | low | 卫生 | frontmatter 缺少 name/description |
 | SG-HYG-002 | high | 卫生 | 包含 exe/dll/so/msi 等二进制/安装包 |
 | SG-HYG-003 | low | 卫生 | 包含 bat/cmd/ps1/vbs/hta/reg 脚本 |
 | SG-COMBO-001 | critical | 组合 | 敏感信息访问 + 外部网络调用（数据外传） |
@@ -360,6 +362,10 @@ skillguard rules list
 
 ```text
 skillguard scan <path> [options]
+skillguard lock <path> [--output skillguard.lock]
+skillguard verify <path> [--lock skillguard.lock]
+skillguard policy validate <file.json>
+skillguard install <source> [options]   # P1 实验入口
 skillguard rules list
 skillguard rules validate <file.json|dir>
 skillguard init [dir] [--force]
@@ -371,8 +377,12 @@ skillguard version
 | 选项 | 说明 | 默认 |
 |---|---|---|
 | `--format text\|json\|sarif` | 输出格式 | `text` |
-| `--fail-on none\|low\|medium\|high\|critical` | 达到该级别时退出码为 1 | `high` |
+| `--fail-on none\|low\|medium\|high\|critical` | 达到该级别时退出码为 1；提供策略时由策略 `fail_on` 覆盖 | `high` |
 | `--min-severity low\|medium\|high\|critical` | 隐藏更低级别的结果 | `low` |
+| `--policy <file>` | 策略门禁；存在时退出码由策略决策决定 | `.skillguard-policy.json`（若存在） |
+| `--baseline <file>` | 隐藏基线中的已知发现 | 空 |
+| `--write-baseline <file>` | 将当前发现写入基线 | 空 |
+| `--audit <file>` | 追加哈希链审计记录 | 空 |
 | `--ignore SG-XX-001[,SG-YY-*]` | 忽略规则，支持前缀通配 | 空 |
 | `--allow-domain <domain>` | 允许某个域名的网络告警，可重复/逗号分隔 | 空 |
 | `--rules <dir>` | 加载额外 JSON 规则包，同 ID 覆盖内置 | 空 |
@@ -386,9 +396,9 @@ skillguard version
 
 | 码 | 含义 |
 |---|---|
-| `0` | 没有达到 `--fail-on` 阈值的问题 |
-| `1` | 存在达到阈值的问题 |
-| `2` | 参数、配置、规则或 IO 错误 |
+| `0` | 没有达到阈值的问题；提供策略时为 `ALLOW` |
+| `1` | 存在达到阈值的问题；提供策略时为 `BLOCK` |
+| `2` | 参数、配置、规则、策略或 IO 错误 |
 
 ### 常用命令
 
@@ -433,7 +443,7 @@ skillguard scan ./tests/fixtures/exfil-skill --format json --json-pretty
 ```json
 {
   "tool": "skillguard",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "root": "/path/to/exfil-skill",
   "summary": {
     "skills": 1,
@@ -471,7 +481,7 @@ skillguard scan ./tests/fixtures/exfil-skill --format json --json-pretty
 skillguard scan ./skills --format sarif > skillguard.sarif
 ```
 
-SARIF 包含 51 条规则的元数据、`ruleId`、`level`、`physicalLocation` 和 `partialFingerprints`，可直接上传 GitHub Code Scanning：
+SARIF 包含 49 条规则的元数据、`ruleId`、`level`、`physicalLocation` 和 `partialFingerprints`，可直接上传 GitHub Code Scanning：
 
 ```yaml
 - uses: github/codeql-action/upload-sarif@v3
@@ -753,7 +763,7 @@ jobs:
 
 ### 使用本仓库的 composite Action（npm 包已发布，含 4 平台二进制）
 
-`action.yml` 已包含在仓库中，通过 `npx seramys-skillguard` 运行；npm 包 0.1.1 已内含 4 个平台二进制。建议固定到发布标签：
+`action.yml` 已包含在仓库中，通过 `npx seramys-skillguard` 运行；npm 包 0.1.1 已内含 4 个平台二进制。0.2.0 的 Action 默认版本已对齐源码版本，但需要等 0.2.0 发布到 npm 后才可用。当前建议固定到已发布标签：
 
 ```yaml
 - uses: Seramys/skillguard@v0.1.1
@@ -768,7 +778,7 @@ jobs:
 | `path` | `.` | 要扫描的目录 |
 | `fail-on` | `high` | `low` / `medium` / `high` / `critical` / `none` |
 | `format` | `sarif` | `text` / `json` / `sarif`，输出到运行日志 |
-| `version` | `0.1.1` | npm 包版本 |
+| `version` | `0.2.0`（发布后可用；当前 npm 最新为 `0.1.1`） | npm 包版本 |
 
 > composite Action 只运行扫描并设置退出码；它不写 SARIF 文件。需要 Code Scanning 时，用 `npx --yes seramys-skillguard@0.1.1 scan . --format sarif > skillguard.sarif`，或使用上面的本地构建工作流。
 
@@ -788,7 +798,7 @@ skillguard scan ./skills --fail-on high
 
 - `cargo test`
 - `cargo build --release`
-- `python bench/run.py --exe target/release/skillguard`（检测基准门禁）
+- `python bench/run.py --exe target/release/skillguard --split all --no-imported`（公开合成 smoke gate；不含真实 holdout）
 - Python wheel 打包 + editable install
 - npm 打包 + 启动器版本检查
 
@@ -796,43 +806,44 @@ skillguard scan ./skills --fail-on high
 
 ## 检测基准
 
-> 目标：把“检出率”变成可复现的数字，而不是规则数量的宣称。
+> 目标：把“检出率”变成可复现的数字，而不是规则数量的宣称。这里有两个套件，**不能混用它们的结果**。
 
-当前基线（2026-11-20，`holdout`，真实语料 + 规则消歧后）：
+| 套件 | 在 CI 运行 | 组成 | 当前结果 |
+|---|---|---|---|
+| 公开 smoke | 是 | 27 个基础 fixture + 320 恶意 / 520 良性生成语料 | 335 / 532；recall 100%，FPR 0% |
+| 扩展 holdout | 否 | 生成 holdout + MaliciousSkillBench + ClawHub 复核样本 | 202 / 340；recall 64.9%，FPR 1.5% |
+
+公开 smoke 是合成语料，100% 只证明扫描器、规则和打包没有坏，**不是对真实生态的质量证明**。扩展 holdout 才是质量数字；它的真实样本不能在仓库中再分发，所以公开 CI 不运行它，也不会把它写成 CI 绿色。
+
+扩展 holdout 的阈值曲线（2026-11-20，49 条规则）：
 
 | 阈值 | Recall | FPR |
 |---|---:|---:|
-| low | 95.0%（192/202） | 45.9% |
-| medium | 69.8%（141/202） | 29.7% |
-| high | **64.9%（131/202）** | **3.5%** |
-| critical | 30.7%（62/202） | **0.0%** |
+| low | 74.3%（150/202） | 26.2% |
+| medium | 69.3%（140/202） | 23.5% |
+| high | **64.9%（131/202）** | **1.5%（5/340）** |
+| critical | 30.7%（62/202） | 0.0% |
 
-holdout 含 202 恶意 / 340 良性。`high` 阈值 FPR 3.5%、`critical` 阈值 FPR 0%，误报门禁达标；recall 仍低于 90% 目标，缺口集中在 MaliciousSkillBench 的改写型恶意样本。
+`high` 是当前工作点：FPR 1.5%，recall 64.9%，仍低于 90% 的产品目标。缺口集中在 MaliciousSkillBench 的改写型恶意样本；规则消歧可以降低误报，但不能把语义改写变成确定性信号。
 
-规则消歧（2026-11-20）：
+扩展 holdout 组成：
 
-- `SG-NET-004` 不再把 `curl ... | python -c "json.load(...)"` 当作下载执行，只有管道进 `exec/eval/compile/subprocess` 等执行原语才命中；
-- `SG-COMBO-003` 的网络组不再包含 `SG-NET-004`，避免「API token + 普通 URL」直接升为 critical；
-- `SG-PI-003` 的中文分支收紧为「不要/禁止 + 告诉/通知/告知/提醒 + 用户」紧邻句式。
+| 来源 | 恶意 | 良性 |
+|---|---:|---:|
+| 生成语料 `holdout` | 106 | 173 |
+| MaliciousSkillBench `holdout` | 96 | 0 |
+| ClawHub reviewed `holdout` | 0 | 167 |
+| **合计** | **202** | **340** |
 
-语料：
+Cisco 评测集和 Trail of Bits 样本属于基础 smoke fixture，不计入扩展 holdout。ClawHub 500 条良性均逐条复核并标为 `reviewed`；MaliciousSkillBench 300 条沿用原始 benchmark 标注，不使用本扫描器自标。
 
-- ClawHub 500 条良性（按平台状态 provisional 抓取，逐条人工复核后标 `reviewed`）；
-- MaliciousSkillBench 300 条恶意（沿用原始 benchmark 标注，未使用本扫描器自标）+ Cisco 评测集 6 条 + Trail of Bits `overtly-malicious-skills` 4 条；
-- 10 个中文恶意样本 + 10 个中文良性样本；
-- 320 恶意 / 520 良性生成语料，按 `dev/test/holdout` 切分；良性含 hard negatives：`.env.example`、合法 `curl`、单变量 `os.getenv`、`find -exec` 测试、官方 registry、锁定版本 MCP、远程 MCP 端点、普通 Docker、无害 Base64。
+本轮精度处理：
 
-语义层消融（仅 medium 候选队列，68 条：10 恶意 / 58 良性，Qwen2.5-7B-Instruct Q4_K_M 本地 CPU 推理，`response_format=json_schema`）：
-
-| 方案 | Recall | FPR | parse-error |
-|---|---:|---:|---:|
-| 规则（候选队列内） | 0% | 0% | — |
-| LLM 语义（risk ≥ 0.6，json_schema） | 40%（4/10） | 0% | 0 |
-| 规则 ∪ 语义 | 40% | 0% | 0 |
-
-JSON schema 约束把 `parse-error` 从 32/68 清零，但召回仍是 40%：剩余 6 条恶意模型的 `labels` 已能指出 exfiltration / RCE / persistence，但 `risk` 落在 0.2–0.5。说明瓶颈已从「输出格式」转为「7B 模型的风险标定偏保守」，下一步应按 `labels` 而非单一 `risk` 阈值做升级判定。
-
-语义层只作为 **medium 候选的 rerank**（`python bench/rerank.py`），不进入 `skillguard scan` 主路径，避免把 CPU 推理成本带给所有用户。JSON schema 约束把输出固定为 `{"risk", "labels", "evidence"}`，消除历史 `max_tokens=96` 时的截断问题。
+- `SG-HYG-001` 只要求 `name` / `description`，误报从 70 降到 1；
+- `SG-PERM-001` 只看 `allowed-tools` 声明，误报从 76 降到 62（medium，不影响 high 门禁）；
+- 删除 0 TP 的 `SG-PI-004`、`SG-MCP-004`；
+- `SG-PI-001` 忽略“never override”这类否定句；`SG-PI-003` 不跨句匹配；`SG-PI-006` 不再把 emoji ZWJ 序列当隐藏字符；
+- high 门禁误报从 12 条降到 5 条，recall 维持 64.9%。
 
 运行：
 
@@ -840,12 +851,20 @@ JSON schema 约束把 `parse-error` 从 32/68 清零，但召回仍是 40%：剩
 cargo build --release
 python bench/fetch_samples.py
 python bench/make_corpus.py
-python bench/run.py --exe target/release/skillguard --split holdout
+
+# CI 公开 smoke（不需要本地真实语料）
+python bench/run.py --exe target/release/skillguard --split all --no-imported
+
+# 扩展 holdout（需要本地授权语料和 bench/imported/manifest.json）
+python bench/run.py --exe target/release/skillguard --split holdout \
+  --imported-manifest bench/imported/manifest.json
 ```
 
-结果写入 `bench/results/latest.json` 和版本化报告；CI 以 `target_fpr=0.05`、`min_recall_at_fpr=0.90`、`max_fpr_upper=0.10` 作为门禁。当前是合成+公开小语料，不是安全认证；P1 会接入真实 Hub 样本和外部复核。
+门禁参数在 `bench/manifest.json`：`target_fpr=0.05`、`max_fpr_upper=0.10`、`min_recall_at_fpr=0.64`（诚实的回归下限，不是产品目标）、`target_recall_at_fpr=0.90`（尚未达到）。`bench/reports/` 只提交摘要和 Markdown，原始逐样本 JSON 不提交。
 
-> 该基准跑的是工作区源码。已发布的 0.1.1 不包含本次新增的容器、pyc、空白填充、环境变量、MCP 与策略规则；正式发布时建议升到 0.2.0。
+> 该基准跑的是工作区源码。已发布的 0.1.1 不包含本次新增的容器、pyc、空白填充、环境变量、MCP、策略/审计/install 加固与规则消歧；0.2.0 发布后这些能力才进入二进制分发。
+
+**LLM 语义层已暂停**：当前候选队列消融只有 40% recall（4/10），且 7B 模型的风险标定偏保守；在规则-only 基线稳定和校准完成前，不进入 `skillguard scan` 主路径，也不把本地推理作为发布依赖。
 
 ### P1/P2 机制
 
@@ -877,53 +896,55 @@ python bench/candidates.py
 ## 验证
 
 <p align="center">
-  <img src="docs/assets/screenshots/verification.png" width="980" alt="SkillGuard 本地验证报告：61 个测试、0 警告、自扫描 PASS">
+  <img src="docs/assets/screenshots/verification.png" width="980" alt="SkillGuard 本地验证报告（0.1.1 历史截图）">
 </p>
-<p align="center"><sub>本地验证报告：61 个测试、0 条 clippy 警告、自扫描 PASS、SARIF 2.1.0 有效。</sub></p>
+<p align="center"><sub>0.1.1 历史验证截图；0.2.0 最新数字见下表。</sub></p>
 
-本地验证环境：Windows 11 x64，SkillGuard 0.1.1，2026-11-20；Action 自测在 GitHub Actions 三平台完成（2026-11-20）。
+本地验证环境：Windows 11 x64，SkillGuard 0.2.0 源码，2026-11-20；已发布二进制为 0.1.1。Action 自测在 GitHub Actions 三平台完成（2026-11-20）。
 
 | 检查项 | 命令 | 结果 |
 |---|---|---|
-| 单元测试 | `cargo test` | 19 passed · 0 failed |
-| 端到端测试 | `cargo test` | 61 passed · 0 failed |
+| 单元测试 | `cargo test` | 36 passed · 0 failed |
+| 端到端测试 | `cargo test` | 23 CLI + 11 guard + 9 install = 43 passed |
+| 合计 | `cargo test` | **79 passed · 0 failed** |
 | 静态检查 | `cargo clippy --all-targets -- -D warnings` | 0 warnings |
-| 自扫描 | `dist\win32-x64\skillguard.exe scan .` | PASS · 0 high · 4 low / 5 medium |
-| SARIF | `--format sarif` | valid 2.1.0 · 40 rules · 4 results |
-| npm 包 | `npm pack --dry-run` | 8 files · 4 platform binaries · bundled |
-| PyPI | `twine upload` | 4 platform wheels · 0.1.1 |
-| Python 启动器 | `skillguard version` | skillguard 0.1.1 |
+| 格式 | `cargo fmt --check` | clean |
+| 自扫描 | `target/release/skillguard scan .` | PASS · 0 high · 4 medium / 3 low |
+| SARIF | `--format sarif` | valid 2.1.0 · 49 rules · 7 results |
+| npm 包 | `npm pack --dry-run` | 0.2.0 metadata · 4 platform binaries |
+| PyPI | `twine upload` | 0.1.1 已发布；0.2.0 构建待发布 |
+| Python 启动器 | `skillguard version` | 源码 0.2.0；已发布 0.1.1 |
 | GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/runs/44661440348) | 3/3 passed · linux/windows/macos x64 |
 
 <p align="center">
-  <img src="docs/assets/screenshots/self-scan.png" width="900" alt="SkillGuard 自扫描：PASS，4 条 low 与 5 条 medium 提示">
+  <img src="docs/assets/screenshots/self-scan.png" width="900" alt="SkillGuard 自扫描历史截图">
 </p>
-<p align="center"><sub>用 SkillGuard 扫描自己的仓库：PASS，0 high；当前为 4 条 low 与 4 条 medium（依赖未锁定与 env 读取提示）。</sub></p>
+<p align="center"><sub>0.1.1 历史自扫描截图；0.2.0 源码自扫描为 PASS，0 high，4 medium / 3 low。</sub></p>
 
 <details>
 <summary><b>展开：原始测试输出</b></summary>
 
 ```text
-running 28 tests
-test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+running 36 tests
+test result: ok. 36 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
-running 21 tests
-test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+running 23 tests
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
-running 6 tests
-test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+running 11 tests
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
-running 6 tests
-test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+running 9 tests
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
 SARIF 校验：
 
 ```text
 version 2.1.0
-tool SkillGuard
-rules 51
-results 4
+tool SkillGuard 0.2.0
+rules 49
+results 7
 schema https://json.schemastore.org/sarif-2.1.0.json
 ```
 
@@ -1011,14 +1032,14 @@ LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不�
 <details>
 <summary><b>支持哪些平台？</b></summary>
 
-源码支持 Windows / Linux / macOS；CI 矩阵在三平台运行测试和 release 构建。预编译单文件、npm 平台包和 Python wheel 以实际 Release / 发布产物为准。当前 0.1.1 的本地验证在 Windows 11 x64 完成；Release 提供四个平台二进制。
+源码支持 Windows / Linux / macOS；CI 矩阵在三平台运行测试和 release 构建。0.2.0 源码在 Windows 11 x64 完成本地验证；已发布 0.1.1 的 Release 提供四个平台二进制，npm/PyPI 平台包以实际发布产物为准。
 
 </details>
 
 <details>
 <summary><b>npm / PyPI 已经发布了吗？</b></summary>
 
-0.1.1 已发布到 npm / PyPI，包含 Windows、Linux、macOS x64/arm64。Windows/Linux/macOS 均可直接安装；其他架构请源码构建。
+0.1.1 已发布到 npm / PyPI，包含 Windows、Linux、macOS x64/arm64。0.2.0 已在 `release/0.2.0` 源码分支准备，但尚未发布到 npm/PyPI；发布前请用源码构建，其他架构也请源码构建。
 
 </details>
 
@@ -1042,8 +1063,8 @@ LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不�
 
 > 以下是方向，不是承诺；优先级会根据真实使用反馈调整。
 
-- **0.2**：规则基线/差异扫描、更多供应链规则、规则测试框架、更多运行时/Agent 集成。
-- **0.3**：可选的离线 LLM 语义分析，用于识别改写过的提示注入。
+- **0.2（当前源码分支）**：策略权威性、lock/audit 哈希链、install 加固、49 条规则与公开/扩展双基准。
+- **0.3**：提升真实 holdout 的召回（目标 90%）、补齐容器/pyc 解析、规则回归框架；LLM 语义层保持可选项并暂停默认集成。
 - **1.0**：运行时 Agent 网关、工具调用审批、集中策略与审计控制台。
 
 ### 标识

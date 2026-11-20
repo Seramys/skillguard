@@ -11,7 +11,7 @@
 
 Skill을 설치하기 전에 SkillGuard를 먼저 실행하세요.
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE) [![Tests](https://img.shields.io/badge/tests-35%20passing-17A673?style=flat-square)](README_EN.md#verification) [![Rules](https://img.shields.io/badge/rules-29-5B6CFF?style=flat-square)](rules/core.json) [![SARIF 2.1.0](https://img.shields.io/badge/SARIF-2.1.0-8B7CF6?style=flat-square)](README_EN.md#output-formats)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE) [![Tests](https://img.shields.io/badge/tests-79%20passing-17A673?style=flat-square)](README_EN.md#verification) [![Rules](https://img.shields.io/badge/rules-49-5B6CFF?style=flat-square)](rules/core.json) [![SARIF 2.1.0](https://img.shields.io/badge/SARIF-2.1.0-8B7CF6?style=flat-square)](README_EN.md#output-formats)
 
 [简体中文](README.md) · [English](README_EN.md) · [日本語](README_JA.md) · [한국어](README_KO.md)
 
@@ -132,20 +132,21 @@ Node / Python 런처는 얇은 래퍼이며, 동일한 Rust 엔진과 `rules/cor
 
 | 카테고리 | 규칙 수 | 주요 신호 |
 |---|---:|---|
-| 프롬프트 인젝션 | 5 | 기존 지시 무시, 시스템 프롬프트 추출, 사용자 은폐, 역할 하이재킹 |
-| 난독화 | 2 | 제로폭 문자, 양방향 제어 문자, Unicode 태그, 대용량 Base64 |
+| 프롬프트 인젝션 | 5 | 기존 지시 무시, 시스템 프롬프트 추출, 사용자 은폐, 확인 우회 |
+| 난독화 | 11 | 제로폭/양방향/Unicode 태그, Base64, 공백 패딩, pyc 변조, 컨테이너 내 스크립트, OOXML/PDF/SVG |
 | 과도한 권한 | 3 | Shell 실행, SSH/클라우드/Cookie/지갑 접근, 임의 도메인 |
 | 비밀 정보 | 4 | 개인 키, API 키 프리픽스, 고엔트로피 값, `.env` / 자격 증명 파일 |
 | 의심스러운 통신 | 4 | Discord/Telegram/Slack Webhook, 원시 IP, 터널, `curl \| bash` |
-| 위험한 명령 | 3 | `rm -rf /`, 리버스 셸, crontab / LaunchAgent / 레지스트리 지속성 |
-| 공급망 | 3 | 버전 미고정, npm 라이프사이클 스크립트, 다운로드 후 실행 |
+| 위험한 명령 | 4 | `rm -rf /`, 리버스 셸, crontab / LaunchAgent / 레지스트리 지속성, `find -exec` |
+| 공급망 | 4 | 버전 미고정, npm 라이프사이클 스크립트, 다운로드 후 실행, registry 덮어쓰기 |
+| MCP | 4 | 미고정 npx/uvx, 권한 높은 Docker, 자동 승인, shell 래핑 원격 실행 |
 | 패키지 위생 | 3 | frontmatter 누락, exe/dll/so/msi, bat/cmd/ps1/vbs/hta/reg |
-| 데이터 유출 조합 | 1 | 민감 정보 접근 + 외부 통신 |
-| 원격 실행 조합 | 1 | 프롬프트 인젝션 + 리버스 셸/다운로드 실행 |
-| **합계** | **29** | JSON 정의, 외부 규칙 팩 지원 |
+| 데이터 접근 | 2 | 환경 변수 읽기, 일괄 내보내기 |
+| 조합 | 5 | 민감 읽기+외부 통신, 주입+원격 실행, env+통신, 안심 문구+registry, 컨테이너+일괄 실행 |
+| **합계** | **49** | JSON 정의, 외부 규칙 팩 지원 |
 
 <p align="center">
-  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="29개 규칙의 카테고리와 심각도">
+  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="49개 규칙의 카테고리와 심각도">
 </p>
 
 조합 규칙(`SG-COMBO-001` / `SG-COMBO-002`)은 단일 문자열이 아니라 동일 Skill 내의 여러 신호를 연관시킵니다. 한 신호를 억제하면 조합 위험도 사라집니다.
@@ -206,12 +207,12 @@ skillguard version
   <img src="docs/assets/screenshots/verification-en.png" width="980" alt="로컬 검증 보고서">
 </p>
 
-환경: Windows 11 x64, SkillGuard 0.1.1, 2026-11-19.
+환경: Windows 11 x64, SkillGuard 0.2.0 소스, 2026-11-20 (공개 바이너리는 0.1.1).
 
 - 테스트: 35개 통과 (19 유닛 + 16 E2E)
 - Clippy: 경고 0
 - 자체 스캔: PASS (low 4건만)
-- SARIF: 2.1.0, 29개 규칙, 4개 결과
+- SARIF: 2.1.0, 49개 규칙, 7개 결과
 
 자세한 수치와 원본 로그는 [English README](README_EN.md#verification)를 참고하세요.
 

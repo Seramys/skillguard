@@ -11,7 +11,7 @@
 
 Skill をインストールする前に、SkillGuard を一度走らせてください。
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE) [![Tests](https://img.shields.io/badge/tests-35%20passing-17A673?style=flat-square)](README_EN.md#verification) [![Rules](https://img.shields.io/badge/rules-29-5B6CFF?style=flat-square)](rules/core.json) [![SARIF 2.1.0](https://img.shields.io/badge/SARIF-2.1.0-8B7CF6?style=flat-square)](README_EN.md#output-formats)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow?style=flat-square)](LICENSE) [![Tests](https://img.shields.io/badge/tests-79%20passing-17A673?style=flat-square)](README_EN.md#verification) [![Rules](https://img.shields.io/badge/rules-49-5B6CFF?style=flat-square)](rules/core.json) [![SARIF 2.1.0](https://img.shields.io/badge/SARIF-2.1.0-8B7CF6?style=flat-square)](README_EN.md#output-formats)
 
 [简体中文](README.md) · [English](README_EN.md) · [日本語](README_JA.md) · [한국어](README_KO.md)
 
@@ -132,20 +132,21 @@ Node / Python は薄いランチャーで、同じ Rust エンジンと `rules/c
 
 | カテゴリ | ルール数 | 主なシグナル |
 |---|---:|---|
-| プロンプトインジェクション | 5 | 既存指示の無視、システムプロンプトの取得、ユーザーへの隠蔽、ロールハイジャック |
-| 難読化 | 2 | ゼロ幅文字、双方向制御文字、Unicode タグ、大量の Base64 |
+| プロンプトインジェクション | 5 | 既存指示の無視、システムプロンプトの取得、ユーザーへの隠蔽、確認の回避 |
+| 難読化 | 11 | ゼロ幅/双方向/Unicode タグ、Base64、空白パディング、pyc 改ざん、コンテナ内スクリプト、OOXML/PDF/SVG |
 | 過剰な権限 | 3 | Shell 実行、SSH/クラウド/Cookie/ウォレットへのアクセス、任意ドメイン |
 | 秘密情報 | 4 | 秘密鍵、API キー、高エントロピー値、`.env` / 認証情報ファイル |
 | 不審な通信 | 4 | Discord/Telegram/Slack Webhook、生 IP、トンネル、`curl \| bash` |
-| 危険なコマンド | 3 | `rm -rf /`、リバースシェル、crontab / LaunchAgent / レジストリ永続化 |
-| サプライチェーン | 3 | バージョン未固定、npm ライフサイクルスクリプト、ダウンロード後の実行 |
+| 危険なコマンド | 4 | `rm -rf /`、リバースシェル、crontab / LaunchAgent / レジストリ永続化、`find -exec` |
+| サプライチェーン | 4 | バージョン未固定、npm ライフサイクルスクリプト、ダウンロード後の実行、registry 上書き |
+| MCP | 4 | 未固定 npx/uvx、特権 Docker、自動承認、shell 経由のリモート実行 |
 | パッケージ衛生 | 3 | frontmatter 不足、exe/dll/so/msi、bat/cmd/ps1/vbs/hta/reg |
-| 外部送信の組み合わせ | 1 | 機密アクセス + 外部通信 |
-| リモート実行の組み合わせ | 1 | プロンプトインジェクション + リバースシェル/ダウンロード実行 |
-| **合計** | **29** | JSON 定義、外部ルールパック対応 |
+| データアクセス | 2 | 環境変数の読み取り、一括エクスポート |
+| 組み合わせ | 5 | 機密読取+外部通信、注入+実行、env+通信、安心文言+registry、コンテナ+一括実行 |
+| **合計** | **49** | JSON 定義、外部ルールパック対応 |
 
 <p align="center">
-  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="29 ルールのカテゴリと重要度">
+  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="49 ルールのカテゴリと重要度">
 </p>
 
 組み合わせルール（`SG-COMBO-001` / `SG-COMBO-002`）は、単一の文字列ではなく複数シグナルを同一 Skill 内で関連付けます。片方のシグナルを抑制すると、組み合わせリスクも消えます。
@@ -206,12 +207,12 @@ skillguard version
   <img src="docs/assets/screenshots/verification-en.png" width="980" alt="ローカル検証レポート">
 </p>
 
-環境：Windows 11 x64、SkillGuard 0.1.1、2026-11-19。
+環境：Windows 11 x64、SkillGuard 0.2.0 ソース、2026-11-20（公開バイナリは 0.1.1）。
 
 - テスト：35 件成功（19 ユニット + 16 E2E）
 - Clippy：警告 0
 - 自己スキャン：PASS（low 4 件のみ）
-- SARIF：2.1.0、29 ルール、4 結果
+- SARIF：2.1.0、49 ルール、7 結果
 
 その他の数値と生ログは [English README](README_EN.md#verification) を参照してください。
 
