@@ -273,7 +273,7 @@ jobs:
           cp staging/darwin-x64/skillguard release-assets/skillguard-darwin-x64
           cp staging/darwin-arm64/skillguard release-assets/skillguard-darwin-arm64
           chmod +x release-assets/skillguard-* 2>/dev/null || true
-          sha256sum release-assets/skillguard-* > release-assets/SHA256SUMS.txt
+          (cd release-assets && sha256sum skillguard-* > SHA256SUMS.txt)
           ls -l release-assets
 
       - name: Create or update GitHub Release
