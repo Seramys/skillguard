@@ -104,6 +104,98 @@ fn policy_blocks_high_findings() {
 }
 
 #[test]
+fn policy_exception_allows_high() {
+    let root = temp_dir("policy-allow");
+    let policy = root.join("policy.json");
+    fs::write(
+        &policy,
+        r#"{"profile":"team","fail_on":"high","allow":[{"rule":"*","owner":"alice","reason":"approved","expires":"2999-01-01"}]}"#,
+    )
+    .unwrap();
+    let (code, stdout, stderr) = run(&[
+        "scan",
+        fixture("dangerous-skill").to_str().unwrap(),
+        "--policy",
+        policy.to_str().unwrap(),
+        "--format",
+        "json",
+    ]);
+    assert_eq!(
+        code, 0,
+        "active exception should allow\nstdout: {stdout}\nstderr: {stderr}"
+    );
+    assert!(
+        stderr.contains("policy: ALLOW") || stderr.contains("policy: WARN"),
+        "{stderr}"
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn expired_exception_does_not_allow() {
+    let root = temp_dir("policy-expired");
+    let policy = root.join("policy.json");
+    fs::write(
+        &policy,
+        r#"{"profile":"team","fail_on":"high","allow":[{"rule":"*","owner":"alice","reason":"approved","expires":"2000-01-01"}]}"#,
+    )
+    .unwrap();
+    let (code, _, stderr) = run(&[
+        "scan",
+        fixture("dangerous-skill").to_str().unwrap(),
+        "--policy",
+        policy.to_str().unwrap(),
+        "--format",
+        "json",
+    ]);
+    assert_eq!(code, 1, "expired exception must block\n{stderr}");
+    assert!(stderr.contains("policy: BLOCK"), "{stderr}");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn policy_fail_on_none_wins_over_cli() {
+    let root = temp_dir("policy-none");
+    let policy = root.join("policy.json");
+    fs::write(&policy, r#"{"profile":"team","fail_on":"none"}"#).unwrap();
+    let (code, stdout, stderr) = run(&[
+        "scan",
+        fixture("dangerous-skill").to_str().unwrap(),
+        "--fail-on",
+        "high",
+        "--policy",
+        policy.to_str().unwrap(),
+        "--format",
+        "json",
+    ]);
+    assert_eq!(
+        code, 0,
+        "policy fail_on=none must win\nstdout: {stdout}\nstderr: {stderr}"
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn invalid_policy_is_rejected() {
+    let root = temp_dir("policy-invalid");
+    let policy = root.join("policy.json");
+    fs::write(
+        &policy,
+        r#"{"profile":"team","fail_on":"high","allow":[{"rule":"*","owner":"alice","reason":"approved","expires":"not-a-date"}]}"#,
+    )
+    .unwrap();
+    let (code, _, stderr) = run(&["policy", "validate", policy.to_str().unwrap()]);
+    assert_eq!(code, 2, "invalid policy must fail closed\n{stderr}");
+    assert!(stderr.contains("invalid expires date"), "{stderr}");
+
+    fs::write(&policy, r#"{"profile":"team","fail_on":"high","typo":true}"#).unwrap();
+    let (code, _, stderr) = run(&["policy", "validate", policy.to_str().unwrap()]);
+    assert_eq!(code, 2, "unknown policy fields must fail closed\n{stderr}");
+    assert!(stderr.contains("unknown field"), "{stderr}");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn baseline_hides_known_findings() {
     let root = temp_dir("baseline");
     let baseline = root.join("baseline.json");

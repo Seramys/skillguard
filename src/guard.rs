@@ -45,6 +45,7 @@ pub struct Baseline {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Exception {
     #[serde(default)]
     pub rule: String,
@@ -57,6 +58,7 @@ pub struct Exception {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Policy {
     #[serde(default)]
     pub profile: String,
@@ -238,16 +240,90 @@ pub fn filter_baseline(findings: Vec<Finding>, baseline: &BTreeSet<String>) -> V
 pub fn load_policy(path: &Path) -> Result<Policy, String> {
     let text = fs::read_to_string(path)
         .map_err(|e| format!("cannot read policy {}: {e}", path.display()))?;
-    serde_json::from_str(&text).map_err(|e| format!("policy 解析失败 {}: {e}", path.display()))
+    let policy: Policy = serde_json::from_str(&text)
+        .map_err(|e| format!("policy 解析失败 {}: {e}", path.display()))?;
+    validate_policy(&policy)?;
+    Ok(policy)
 }
 
-pub fn evaluate(findings: &[Finding], policy: &Policy) -> PolicyResult {
+fn parse_fail_on(value: &str) -> Result<Option<Severity>, String> {
+    if value.eq_ignore_ascii_case("none") {
+        return Ok(None);
+    }
+    Severity::parse(value)
+        .map(Some)
+        .ok_or_else(|| format!("invalid policy fail_on: {value}"))
+}
+
+fn validate_rule_pattern(pattern: &str, field: &str) -> Result<(), String> {
+    let trimmed = pattern.trim();
+    if trimmed.is_empty() {
+        return Err(format!("policy {field} contains an empty rule pattern"));
+    }
+    if !trimmed
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '*'))
+    {
+        return Err(format!("policy {field} contains invalid rule pattern: {pattern}"));
+    }
+    Ok(())
+}
+
+fn validate_policy(policy: &Policy) -> Result<(), String> {
+    if let Some(value) = policy.fail_on.as_deref() {
+        parse_fail_on(value)?;
+    }
+    for pattern in &policy.deny {
+        validate_rule_pattern(pattern, "deny")?;
+    }
+    for exception in &policy.allow {
+        validate_rule_pattern(&exception.rule, "allow.rule")?;
+        if exception.owner.trim().is_empty() {
+            return Err(format!(
+                "policy allow.rule {} requires a non-empty owner",
+                exception.rule
+            ));
+        }
+        if exception.reason.trim().is_empty() {
+            return Err(format!(
+                "policy allow.rule {} requires a non-empty reason",
+                exception.rule
+            ));
+        }
+        if let Some(expires) = exception.expires.as_deref() {
+            if parse_date_days(expires).is_none() {
+                return Err(format!(
+                    "policy allow.rule {} has invalid expires date: {expires}",
+                    exception.rule
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn exception_is_active(exception: &Exception, rule_id: &str, today: i64) -> bool {
+    if !rule_matches(&exception.rule, rule_id) {
+        return false;
+    }
+    match exception.expires.as_deref() {
+        None => true,
+        Some(value) => parse_date_days(value)
+            .map(|day| day >= today)
+            .unwrap_or(false),
+    }
+}
+
+pub fn evaluate(
+    findings: &[Finding],
+    policy: &Policy,
+    default_fail_on: Option<Severity>,
+) -> PolicyResult {
     let counts = Counts::from_findings(findings);
-    let fail_on = policy
-        .fail_on
-        .as_deref()
-        .and_then(Severity::parse)
-        .unwrap_or(Severity::High);
+    let fail_on = match policy.fail_on.as_deref() {
+        Some(value) => parse_fail_on(value).unwrap_or(None),
+        None => default_fail_on,
+    };
     let max_medium = policy.max_medium.unwrap_or(usize::MAX);
     let today = today_days();
     let mut reasons = Vec::new();
@@ -267,38 +343,31 @@ pub fn evaluate(findings: &[Finding], policy: &Policy) -> PolicyResult {
             ));
             continue;
         }
-        let exception = policy.allow.iter().find(|item| {
-            rule_matches(&item.rule, &finding.rule_id)
-                && item
-                    .expires
-                    .as_deref()
-                    .and_then(parse_date_days)
-                    .map(|day| day >= today)
-                    .unwrap_or(true)
-        });
-        if exception.is_some() {
+        let exception = policy
+            .allow
+            .iter()
+            .find(|item| exception_is_active(item, &finding.rule_id, today));
+        if let Some(exception) = exception {
             reasons.push(format!(
                 "exception {} for {} ({})",
-                finding.rule_id,
-                exception.map(|item| item.owner.as_str()).unwrap_or("owner"),
-                exception
-                    .map(|item| item.reason.as_str())
-                    .unwrap_or("reason")
+                finding.rule_id, exception.owner, exception.reason
             ));
             continue;
         }
-        if finding.severity >= fail_on {
-            blocked = true;
-            reasons.push(format!(
-                "{} {} at {}:{} reaches fail_on={}",
-                finding.severity.as_str(),
-                finding.rule_id,
-                finding.file,
-                finding.line,
-                fail_on.as_str()
-            ));
-        } else if finding.severity == Severity::Medium {
-            warned = true;
+        match fail_on {
+            Some(threshold) if finding.severity >= threshold => {
+                blocked = true;
+                reasons.push(format!(
+                    "{} {} at {}:{} reaches fail_on={}",
+                    finding.severity.as_str(),
+                    finding.rule_id,
+                    finding.file,
+                    finding.line,
+                    threshold.as_str()
+                ));
+            }
+            _ if finding.severity == Severity::Medium => warned = true,
+            _ => {}
         }
     }
     if counts.medium > max_medium {
@@ -452,7 +521,11 @@ mod tests {
                 expires: Some("2000-01-01".to_string()),
             }],
         };
-        let result = evaluate(&[finding("SG-PERM-001", Severity::High)], &policy);
+        let result = evaluate(
+            &[finding("SG-PERM-001", Severity::High)],
+            &policy,
+            Some(Severity::High),
+        );
         assert_eq!(result.decision, Decision::Block);
     }
 
@@ -470,8 +543,75 @@ mod tests {
                 expires: Some("2999-01-01".to_string()),
             }],
         };
-        let result = evaluate(&[finding("SG-PERM-001", Severity::Medium)], &policy);
+        let result = evaluate(
+            &[finding("SG-PERM-001", Severity::Medium)],
+            &policy,
+            Some(Severity::High),
+        );
         assert_eq!(result.decision, Decision::Warn);
+    }
+
+    #[test]
+    fn active_exception_allows_high() {
+        let policy = Policy {
+            profile: "team".to_string(),
+            fail_on: Some("high".to_string()),
+            max_medium: None,
+            deny: Vec::new(),
+            allow: vec![Exception {
+                rule: "SG-PERM-001".to_string(),
+                owner: "alice".to_string(),
+                reason: "approved".to_string(),
+                expires: Some("2999-01-01".to_string()),
+            }],
+        };
+        let result = evaluate(
+            &[finding("SG-PERM-001", Severity::High)],
+            &policy,
+            Some(Severity::High),
+        );
+        assert_eq!(result.decision, Decision::Allow);
+    }
+
+    #[test]
+    fn policy_fail_on_none_overrides_default_threshold() {
+        let policy = Policy {
+            profile: "team".to_string(),
+            fail_on: Some("none".to_string()),
+            max_medium: None,
+            deny: Vec::new(),
+            allow: Vec::new(),
+        };
+        let result = evaluate(
+            &[finding("SG-PERM-001", Severity::Critical)],
+            &policy,
+            Some(Severity::High),
+        );
+        assert_eq!(result.decision, Decision::Allow);
+    }
+
+    #[test]
+    fn invalid_policy_expiry_is_rejected() {
+        let policy = Policy {
+            profile: "team".to_string(),
+            fail_on: Some("high".to_string()),
+            max_medium: None,
+            deny: Vec::new(),
+            allow: vec![Exception {
+                rule: "SG-PERM-001".to_string(),
+                owner: "alice".to_string(),
+                reason: "approved".to_string(),
+                expires: Some("not-a-date".to_string()),
+            }],
+        };
+        assert!(validate_policy(&policy).is_err());
+    }
+
+    #[test]
+    fn unknown_policy_fields_are_rejected() {
+        let parsed: Result<Policy, _> =
+            serde_json::from_str(r#"{"profile":"team","fail_on":"high","typo":true}"#);
+        assert!(parsed.is_err());
     }
 
     #[test]

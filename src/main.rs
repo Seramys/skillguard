@@ -603,22 +603,26 @@ fn cmd_scan(args: &[String]) -> Result<i32, String> {
             None
         }
     });
+    let threshold = opts.fail_on;
     let policy_result = match &policy_path {
         Some(path) => {
             let policy = guard::load_policy(path)?;
-            Some(guard::evaluate(&outcome.findings, &policy))
+            Some(guard::evaluate(&outcome.findings, &policy, threshold))
         }
         None => None,
     };
 
-    let threshold = opts.fail_on;
     let color = report::use_color(parsed.has("no-color"));
     let summary = report::summary(&outcome);
-    let failed = report::failed(&summary, threshold)
-        || policy_result
-            .as_ref()
-            .map(|result| result.decision == guard::Decision::Block)
-            .unwrap_or(false);
+    let failed = match &policy_result {
+        Some(result) => result.decision == guard::Decision::Block,
+        None => report::failed(&summary, threshold),
+    };
+    let report_threshold = match &policy_result {
+        Some(result) if result.decision == guard::Decision::Block => Some(Severity::Low),
+        Some(_) => None,
+        None => threshold,
+    };
 
     if let Some(result) = &policy_result {
         if !parsed.has("quiet") {
@@ -665,7 +669,7 @@ fn cmd_scan(args: &[String]) -> Result<i32, String> {
         ),
         "sarif" => println!("{}", report::to_sarif(&outcome, VERSION, &compiled)),
         _ => {
-            report::print_text(&outcome, VERSION, threshold, color, parsed.has("quiet"));
+            report::print_text(&outcome, VERSION, report_threshold, color, parsed.has("quiet"));
         }
     }
 
