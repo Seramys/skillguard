@@ -687,19 +687,26 @@ jobs:
 
 ### 使用本仓库的 composite Action（npm 包已发布，含 4 平台二进制）
 
-`action.yml` 已包含在仓库中，当前通过 `npx seramys-skillguard` 运行；npm 包 0.1.1 已内含 4 个平台二进制：
+`action.yml` 已包含在仓库中，通过 `npx seramys-skillguard` 运行；npm 包 0.1.1 已内含 4 个平台二进制。建议固定到发布标签：
 
 ```yaml
-- uses: Seramys/skillguard@main
+- uses: Seramys/skillguard@v0.1.1
   with:
     path: "."
     fail-on: high
-    format: sarif
+    format: text
 ```
 
-> composite Action 目前用于运行扫描和设置退出码；它不会自动产出 SARIF 文件。需要 Code Scanning 时，请使用上面的本地构建工作流，或自行把 SARIF 写入文件并上传。
+| 输入 | 默认值 | 说明 |
+|---|---|---|
+| `path` | `.` | 要扫描的目录 |
+| `fail-on` | `high` | `low` / `medium` / `high` / `critical` / `none` |
+| `format` | `sarif` | `text` / `json` / `sarif`，输出到运行日志 |
+| `version` | `0.1.1` | npm 包版本 |
 
-> npm 包 0.1.1 已包含 win32-x64、linux-x64、darwin-x64、darwin-arm64；Action 可在 ubuntu/windows/macos runner 上使用。
+> composite Action 只运行扫描并设置退出码；它不写 SARIF 文件。需要 Code Scanning 时，用 `npx --yes seramys-skillguard@0.1.1 scan . --format sarif > skillguard.sarif`，或使用上面的本地构建工作流。
+
+> npm 包 0.1.1 已包含 win32-x64、linux-x64、darwin-x64、darwin-arm64；Action 自测在 ubuntu/windows/macos x64 上 3/3 通过：[运行记录](https://github.com/Seramys/skillguard/actions/runs/44661440348)。
 
 ### 通用 CI
 

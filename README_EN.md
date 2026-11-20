@@ -688,19 +688,26 @@ jobs:
 
 ### Use the composite Action (npm package published with 4 platform binaries)
 
-`action.yml` is included and currently runs through `npx seramys-skillguard`. The npm package 0.1.1 bundles all four platform binaries:
+`action.yml` is included and runs through `npx seramys-skillguard`. The npm package 0.1.1 bundles all four platform binaries. Pin the released tag:
 
 ```yaml
-- uses: Seramys/skillguard@main
+- uses: Seramys/skillguard@v0.1.1
   with:
     path: "."
     fail-on: high
-    format: sarif
+    format: text
 ```
 
-> The composite Action runs the scan and sets the exit code; it does not create a SARIF file. For Code Scanning, use the local-build workflow above, or redirect the SARIF output and upload it yourself.
+| Input | Default | Description |
+|---|---|---|
+| `path` | `.` | Directory to scan |
+| `fail-on` | `high` | `low` / `medium` / `high` / `critical` / `none` |
+| `format` | `sarif` | `text` / `json` / `sarif`, written to the run log |
+| `version` | `0.1.1` | npm package version |
 
-> The npm package 0.1.1 includes win32-x64, linux-x64, darwin-x64, and darwin-arm64; the Action can run on ubuntu/windows/macos runners.
+> The composite Action runs the scan and sets the exit code; it does not create a SARIF file. For Code Scanning, use `npx --yes seramys-skillguard@0.1.1 scan . --format sarif > skillguard.sarif`, or the local-build workflow above.
+
+> The npm package 0.1.1 includes win32-x64, linux-x64, darwin-x64, and darwin-arm64; the Action self-test passed 3/3 on ubuntu/windows/macos x64: [run log](https://github.com/Seramys/skillguard/actions/runs/44661440348).
 
 ### Generic CI
 
