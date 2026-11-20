@@ -2,6 +2,9 @@ name: Action self-test
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/action-selftest.yml
 
 permissions:
   contents: read
