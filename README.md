@@ -139,13 +139,13 @@ skillguard scan ./my-skill --baseline baseline.json
 
 > **定位说明**：`install` 是 P1 实验轨道，不属于 P0 核心。P0 默认使用 `lock` / `verify` / `policy` / `scan`；`install` 保留用于受控环境，默认不宣传、不替用户改变环境。
 
-> **版本状态**：**0.2.0 已发布到 npm / PyPI**，包含 49 条规则、策略权威性、lock/audit 哈希链和 install 加固。GitHub Release v0.2.0 的二进制资产正在补发；当前 Release 页面仍为 v0.1.1。
+> **版本状态**：**0.2.0 已发布到 npm / PyPI / GitHub Release**，包含 49 条规则、策略权威性、lock/audit 哈希链和 install 加固。Release v0.2.0 提供 4 个平台二进制和 SHA256SUMS。
 
 ### 方式一：单文件二进制（推荐）
 
 单文件、无运行时依赖，适合本机扫描和 CI。
 
-**从 Release 下载**（v0.2.0 资产补发中；当前可下载 v0.1.1）：下载对应平台的 `skillguard` / `skillguard.exe`，放到 `PATH` 或项目目录。0.2.0 的 npm/PyPI 包已经包含相同的单文件二进制。
+**从 Release 下载**（v0.2.0）：下载对应平台的 `skillguard` / `skillguard.exe`，放到 `PATH` 或项目目录。npm/PyPI 包包含同一份单文件二进制。
 
 **从源码构建**：
 
@@ -859,7 +859,7 @@ python bench/run.py --exe target/release/skillguard --split holdout \
 
 门禁参数在 `bench/manifest.json`：`target_fpr=0.05`、`max_fpr_upper=0.10`、`min_recall_at_fpr=0.64`（诚实的回归下限，不是产品目标）、`target_recall_at_fpr=0.90`（尚未达到）。`bench/reports/` 只提交摘要和 Markdown，原始逐样本 JSON 不提交。
 
-> 该基准跑的是工作区源码。0.2.0 的 npm/PyPI 包已包含本次新增的容器、pyc、空白填充、环境变量、MCP、策略/审计/install 加固与规则消歧；GitHub Release v0.2.0 的独立二进制资产正在补发。
+> 该基准跑的是工作区源码。0.2.0 的 npm/PyPI/GitHub Release 均已包含本次新增的容器、pyc、空白填充、环境变量、MCP、策略/审计/install 加固与规则消歧。
 
 **LLM 语义层已暂停**：当前候选队列消融只有 40% recall（4/10），且 7B 模型的风险标定偏保守；在规则-only 基线稳定和校准完成前，不进入 `skillguard scan` 主路径，也不把本地推理作为发布依赖。
 
@@ -892,7 +892,7 @@ python bench/candidates.py
 
 ## 验证
 
-本地验证环境：Windows 11 x64，SkillGuard 0.2.0 源码，2026-11-20；npm/PyPI 已发布 0.2.0，GitHub Release 二进制资产补发中。Action 自测在 GitHub Actions 三平台完成（2026-11-20）。
+本地验证环境：Windows 11 x64，SkillGuard 0.2.0，2026-11-20；npm/PyPI/GitHub Release 均已发布 0.2.0。Action 自测在 GitHub Actions 三平台完成（2026-11-20）。
 
 | 检查项 | 命令 | 结果 |
 |---|---|---|
@@ -1019,14 +1019,14 @@ LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不�
 <details>
 <summary><b>支持哪些平台？</b></summary>
 
-源码支持 Windows / Linux / macOS；CI 矩阵在三平台运行测试和 release 构建。0.2.0 在 Windows 11 x64 完成本地验证，npm/PyPI 已提供四平台包；GitHub Release v0.2.0 的独立二进制资产正在补发。
+源码支持 Windows / Linux / macOS；CI 矩阵在三平台运行测试和 release 构建。0.2.0 在 Windows 11 x64 完成本地验证，npm/PyPI/GitHub Release 均提供四平台包与二进制。
 
 </details>
 
 <details>
 <summary><b>npm / PyPI 已经发布了吗？</b></summary>
 
-0.2.0 已发布到 npm / PyPI，包含 Windows、Linux、macOS x64/arm64 平台包。GitHub Release v0.2.0 的独立二进制资产正在补发；其他架构请源码构建。
+0.2.0 已发布到 npm / PyPI / GitHub Release，包含 Windows、Linux、macOS x64/arm64 平台包与二进制。其他架构请源码构建。
 
 </details>
 

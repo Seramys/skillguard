@@ -115,7 +115,7 @@ The experimental `install` rail accepts only HTTPS GitHub sources with a 40-char
 
 ## Installation
 
-> **Version status**: **0.2.0 is published to npm / PyPI** with 49 rules, policy authority, lock/audit hash chains, and install hardening. GitHub Release v0.2.0 assets are being backfilled; the current Release page is still v0.1.1.
+> **Version status**: **0.2.0 is published to npm / PyPI / GitHub Release** with 49 rules, policy authority, lock/audit hash chains, and install hardening. Release v0.2.0 ships four platform binaries and SHA256SUMS.
 
 ### Option 1: single-file binary (recommended)
 
@@ -803,7 +803,7 @@ Committed summaries live in `bench/reports/`; raw per-sample reports are ignored
 
 ## Verification
 
-Local environment: Windows 11 x64, SkillGuard 0.2.0 source, 2026-11-20; npm/PyPI publish 0.2.0, while GitHub Release binary assets are being backfilled. The Action self-test runs on three GitHub Actions platforms (2026-11-20).
+Local environment: Windows 11 x64, SkillGuard 0.2.0, 2026-11-20; npm/PyPI/GitHub Release all publish 0.2.0. The Action self-test runs on three GitHub Actions platforms (2026-11-20).
 
 | Check | Command | Result |
 |---|---|---|
@@ -927,14 +927,14 @@ Yes, but if there is no `SKILL.md`, the root is treated as one Skill. For large 
 <details>
 <summary><b>Which platforms are supported?</b></summary>
 
-The source builds on Windows / Linux / macOS, and the CI matrix runs tests and release builds on all three. 0.2.0 was verified locally on Windows 11 x64 and is published on npm/PyPI; GitHub Release v0.2.0 binaries are being backfilled.
+The source builds on Windows / Linux / macOS, and the CI matrix runs tests and release builds on all three. 0.2.0 was verified locally on Windows 11 x64 and is published on npm/PyPI/GitHub Release.
 
 </details>
 
 <details>
 <summary><b>Are npm / PyPI packages published?</b></summary>
 
-0.2.0 is published to npm / PyPI with Windows, Linux, and macOS x64/arm64 support. GitHub Release v0.2.0 binaries are being backfilled; build from source for other architectures.
+0.2.0 is published to npm / PyPI / GitHub Release with Windows, Linux, and macOS x64/arm64 support. Build from source for other architectures.
 
 </details>
 

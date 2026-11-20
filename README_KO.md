@@ -82,7 +82,7 @@ cargo build --release
 
 ## 설치
 
-> **0.2.0 현재 상태**: npm / PyPI 0.2.0은 공개되었으며 win32-x64, linux-x64, darwin-x64, darwin-arm64를 포함합니다. GitHub Release v0.2.0 바이너리 자산은 보충 중입니다(현재 Release 페이지는 v0.1.1).
+> **0.2.0 현재 상태**: npm / PyPI / GitHub Release 0.2.0이 공개되었으며 win32-x64, linux-x64, darwin-x64, darwin-arm64를 포함합니다. Release v0.2.0에는 4개 플랫폼 바이너리와 SHA256SUMS가 있습니다.
 
 ### 1. 단일 바이너리 (권장)
 
@@ -203,7 +203,7 @@ skillguard version
   <img src="docs/assets/screenshots/verification-en.png" width="980" alt="로컬 검증 보고서">
 </p>
 
-환경: Windows 11 x64, SkillGuard 0.2.0, 2026-11-20 (npm/PyPI 공개됨, GitHub Release 자산 보충 중).
+환경: Windows 11 x64, SkillGuard 0.2.0, 2026-11-20 (npm/PyPI/GitHub Release 공개됨).
 
 - 테스트: 35개 통과 (19 유닛 + 16 E2E)
 - Clippy: 경고 0
