@@ -727,7 +727,7 @@ skillguard scan ./skills --fail-on high
 </p>
 <p align="center"><sub>本地验证报告：35 个测试、0 条 clippy 警告、自扫描 PASS、SARIF 2.1.0 有效。</sub></p>
 
-验证环境：Windows 11 x64，SkillGuard 0.1.1，2026-11-19。
+本地验证环境：Windows 11 x64，SkillGuard 0.1.1，2026-11-19；Action 自测在 GitHub Actions 三平台完成（2026-11-20）。
 
 | 检查项 | 命令 | 结果 |
 |---|---|---|
@@ -739,6 +739,7 @@ skillguard scan ./skills --fail-on high
 | npm 包 | `npm pack --dry-run` | 8 files · 4 platform binaries · bundled |
 | PyPI | `twine upload` | 4 platform wheels · 0.1.1 |
 | Python 启动器 | `skillguard version` | skillguard 0.1.1 |
+| GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/runs/44661440348) | 3/3 passed · linux/windows/macos x64 |
 
 <p align="center">
   <img src="docs/assets/screenshots/self-scan.png" width="900" alt="SkillGuard 自扫描：PASS，4 条 low 依赖提示">

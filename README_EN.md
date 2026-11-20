@@ -728,7 +728,7 @@ A non-zero exit code fails the job; SARIF is optional.
 </p>
 <p align="center"><sub>Local verification: 35 tests, 0 clippy warnings, self-scan PASS, valid SARIF 2.1.0.</sub></p>
 
-Environment: Windows 11 x64, SkillGuard 0.1.1, 2026-11-19.
+Local environment: Windows 11 x64, SkillGuard 0.1.1, 2026-11-19; the Action self-test runs on three GitHub Actions platforms (2026-11-20).
 
 | Check | Command | Result |
 |---|---|---|
@@ -740,6 +740,7 @@ Environment: Windows 11 x64, SkillGuard 0.1.1, 2026-11-19.
 | npm package | `npm pack --dry-run` | 8 files · 4 platform binaries · bundled |
 | PyPI | `twine upload` | 4 platform wheels · 0.1.1 |
 | Python launcher | `skillguard version` | skillguard 0.1.1 |
+| GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/runs/44661440348) | 3/3 passed · linux/windows/macos x64 |
 
 <p align="center">
   <img src="docs/assets/screenshots/self-scan.png" width="900" alt="Self-scan: PASS with four low dependency advisories">
