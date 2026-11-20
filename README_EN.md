@@ -115,7 +115,7 @@ The experimental `install` rail accepts only HTTPS GitHub sources with a 40-char
 
 ## Installation
 
-> **Version status**: `release/0.2.0` source contains 49 rules, policy authority, lock/audit hash chains, and install hardening. npm / PyPI / GitHub Release currently publish **0.1.1** (win32-x64, linux-x64, darwin-x64, darwin-arm64). Build from source to try 0.2.0 before it is published.
+> **Version status**: **0.2.0 is published to npm / PyPI** with 49 rules, policy authority, lock/audit hash chains, and install hardening. GitHub Release v0.2.0 assets are being backfilled; the current Release page is still v0.1.1.
 
 ### Option 1: single-file binary (recommended)
 
@@ -160,8 +160,10 @@ bash scripts/build.sh
 Published (multi-platform):
 
 ```bash
-npx --yes seramys-skillguard@0.1.1 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.2.0 scan ./skills --fail-on high
 ```
+
+> If your npm mirror has not synced 0.2.0 yet, add `--registry=https://registry.npmjs.org/` or wait for the mirror.
 
 Global install:
 
@@ -193,7 +195,7 @@ pip install seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
 
-> 0.1.1 publishes separate platform wheels for Windows, Linux, and macOS (win_amd64, manylinux_2_17_x86_64, macOS arm64/universal2).
+> 0.2.0 publishes separate platform wheels for Windows, Linux, and macOS (win_amd64, manylinux_2_17_x86_64, macOS arm64/universal2) on PyPI.
 
 **Repository verification**:
 
@@ -695,7 +697,7 @@ skillguard rules validate ./examples/extra-rules
 ## CI integration
 
 <p align="center">
-  <img src="docs/assets/diagrams/ci-flow.png" width="980" alt="CI flow: push, matrix test, scan, SARIF upload, Code Scanning">
+  <img src="docs/assets/diagrams/ci-flow.svg" width="980" alt="CI flow: push, matrix test, scan, SARIF upload, Code Scanning">
 </p>
 
 ### Scan your repository (works today)
@@ -730,10 +732,10 @@ jobs:
 
 ### Use the composite Action (npm package published with 4 platform binaries)
 
-`action.yml` is included and runs through `npx seramys-skillguard`. The npm package 0.1.1 bundles all four platform binaries. Pin the released tag:
+`action.yml` is included and runs through `npx seramys-skillguard`. The npm package 0.2.0 bundles all four platform binaries. Pin the released tag:
 
 ```yaml
-- uses: Seramys/skillguard@v0.1.1
+- uses: Seramys/skillguard@v0.2.0
   with:
     path: "."
     fail-on: high
@@ -745,11 +747,11 @@ jobs:
 | `path` | `.` | Directory to scan |
 | `fail-on` | `high` | `low` / `medium` / `high` / `critical` / `none` |
 | `format` | `sarif` | `text` / `json` / `sarif`, written to the run log |
-| `version` | `0.2.0` (available after npm publish; latest published is `0.1.1`) | npm package version |
+| `version` | `0.2.0` | npm package version |
 
-> The composite Action runs the scan and sets the exit code; it does not create a SARIF file. For Code Scanning, use `npx --yes seramys-skillguard@0.1.1 scan . --format sarif > skillguard.sarif`, or the local-build workflow above.
+> The composite Action runs the scan and sets the exit code; it does not create a SARIF file. For Code Scanning, use `npx --yes seramys-skillguard@0.2.0 scan . --format sarif > skillguard.sarif`, or the local-build workflow above.
 
-> The npm package 0.1.1 includes win32-x64, linux-x64, darwin-x64, and darwin-arm64; the Action self-test passed 3/3 on ubuntu/windows/macos x64: [run log](https://github.com/Seramys/skillguard/actions/runs/44661440348).
+> The npm package 0.2.0 includes win32-x64, linux-x64, darwin-x64, and darwin-arm64; the Action self-test passed 3/3 on ubuntu/windows/macos x64: [run log](https://github.com/Seramys/skillguard/actions/runs/44661440348).
 
 ### Generic CI
 
@@ -801,12 +803,7 @@ Committed summaries live in `bench/reports/`; raw per-sample reports are ignored
 
 ## Verification
 
-<p align="center">
-  <img src="docs/assets/screenshots/verification-en.png" width="980" alt="Local verification report (0.1.1 historical screenshot)">
-</p>
-<p align="center"><sub>0.1.1 historical verification screenshot; current 0.2.0 numbers are below.</sub></p>
-
-Local environment: Windows 11 x64, SkillGuard 0.2.0 source, 2026-11-20; published binaries are 0.1.1. The Action self-test runs on three GitHub Actions platforms (2026-11-20).
+Local environment: Windows 11 x64, SkillGuard 0.2.0 source, 2026-11-20; npm/PyPI publish 0.2.0, while GitHub Release binary assets are being backfilled. The Action self-test runs on three GitHub Actions platforms (2026-11-20).
 
 | Check | Command | Result |
 |---|---|---|
@@ -818,14 +815,9 @@ Local environment: Windows 11 x64, SkillGuard 0.2.0 source, 2026-11-20; publishe
 | Self-scan | `target/release/skillguard scan .` | PASS · 0 high · 4 medium / 3 low |
 | SARIF | `--format sarif` | valid 2.1.0 · 49 rules · 7 results |
 | npm package | `npm pack --dry-run` | 0.2.0 metadata · 4 platform binaries |
-| PyPI | `twine upload` | 0.1.1 published; 0.2.0 build pending |
-| Python launcher | `skillguard version` | source 0.2.0; published 0.1.1 |
+| PyPI | `twine upload` | 0.2.0 published (4 platform wheels) |
+| Python launcher | `skillguard version` | skillguard 0.2.0 |
 | GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/runs/44661440348) | 3/3 passed · linux/windows/macos x64 |
-
-<p align="center">
-  <img src="docs/assets/screenshots/self-scan.png" width="900" alt="Historical self-scan screenshot">
-</p>
-<p align="center"><sub>0.1.1 historical self-scan; 0.2.0 source self-scan is PASS with 0 high, 4 medium / 3 low.</sub></p>
 
 <details>
 <summary><b>Expand: raw test output</b></summary>
@@ -935,14 +927,14 @@ Yes, but if there is no `SKILL.md`, the root is treated as one Skill. For large 
 <details>
 <summary><b>Which platforms are supported?</b></summary>
 
-The source builds on Windows / Linux / macOS, and the CI matrix runs tests and release builds on all three. The 0.2.0 source was verified locally on Windows 11 x64; the published 0.1.1 Release ships four platform binaries, and npm/PyPI artifacts follow the actual publication.
+The source builds on Windows / Linux / macOS, and the CI matrix runs tests and release builds on all three. 0.2.0 was verified locally on Windows 11 x64 and is published on npm/PyPI; GitHub Release v0.2.0 binaries are being backfilled.
 
 </details>
 
 <details>
 <summary><b>Are npm / PyPI packages published?</b></summary>
 
-0.1.1 is published to npm / PyPI with Windows, Linux, and macOS x64/arm64 support. 0.2.0 is prepared on the `release/0.2.0` source branch but is not published yet; build from source until it is released.
+0.2.0 is published to npm / PyPI with Windows, Linux, and macOS x64/arm64 support. GitHub Release v0.2.0 binaries are being backfilled; build from source for other architectures.
 
 </details>
 

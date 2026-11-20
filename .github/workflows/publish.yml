@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_version:
-        description: "Type the exact version to build/publish (e.g. 0.1.1)"
+        description: "Type the exact version to build/publish (e.g. 0.2.0)"
         required: true
         type: string
       publish:
@@ -194,12 +194,16 @@ jobs:
           VERSION: ${{ inputs.confirm_version }}
         run: |
           set -euo pipefail
-          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-            if npm view "seramys-skillguard@$VERSION" version --registry=https://registry.npmjs.org/; then
+          for attempt in $(seq 1 30); do
+            # The registry can serve stale tarball 404s after metadata updates.
+            # A cache-busting query forces origin validation instead of the edge cache.
+            tarball="https://registry.npmjs.org/seramys-skillguard/-/seramys-skillguard-$VERSION.tgz"
+            if curl -fsSL "$tarball?cachebust=$attempt-$(date +%s%N)" -o /dev/null; then
+              echo "npm tarball $VERSION is visible"
               exit 0
             fi
-            echo "npm registry not visible yet (attempt $attempt); retrying..." >&2
-            sleep 5
+            echo "npm tarball not visible yet (attempt $attempt); retrying..." >&2
+            sleep 10
           done
           echo "npm package $VERSION not visible after retries" >&2
           exit 1

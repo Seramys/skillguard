@@ -82,7 +82,7 @@ cargo build --release
 
 ## 설치
 
-> **0.1.1 현재 상태**: npm / PyPI 0.1.1은 공개되었으며 win32-x64, linux-x64, darwin-x64, darwin-arm64를 포함합니다. GitHub Release v0.1.1에는 4개 플랫폼 바이너리와 SHA256SUMS가 있습니다.
+> **0.2.0 현재 상태**: npm / PyPI 0.2.0은 공개되었으며 win32-x64, linux-x64, darwin-x64, darwin-arm64를 포함합니다. GitHub Release v0.2.0 바이너리 자산은 보충 중입니다(현재 Release 페이지는 v0.1.1).
 
 ### 1. 단일 바이너리 (권장)
 
@@ -97,7 +97,7 @@ bash scripts/build.sh     # dist/<platform>-<arch>/ 에 복사
 공개됨 (멀티 플랫폼):
 
 ```bash
-npx --yes seramys-skillguard@0.1.1 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.2.0 scan ./skills --fail-on high
 ```
 
 저장소 내 검증:
@@ -203,7 +203,7 @@ skillguard version
   <img src="docs/assets/screenshots/verification-en.png" width="980" alt="로컬 검증 보고서">
 </p>
 
-환경: Windows 11 x64, SkillGuard 0.2.0 소스, 2026-11-20 (공개 바이너리는 0.1.1).
+환경: Windows 11 x64, SkillGuard 0.2.0, 2026-11-20 (npm/PyPI 공개됨, GitHub Release 자산 보충 중).
 
 - 테스트: 35개 통과 (19 유닛 + 16 E2E)
 - Clippy: 경고 0

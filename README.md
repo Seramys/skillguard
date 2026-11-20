@@ -139,13 +139,13 @@ skillguard scan ./my-skill --baseline baseline.json
 
 > **定位说明**：`install` 是 P1 实验轨道，不属于 P0 核心。P0 默认使用 `lock` / `verify` / `policy` / `scan`；`install` 保留用于受控环境，默认不宣传、不替用户改变环境。
 
-> **版本状态**：`release/0.2.0` 源码已包含 49 条规则、策略权威性、lock/audit 哈希链和 install 加固；npm / PyPI / GitHub Release 当前已发布版本仍为 **0.1.1**（win32-x64、linux-x64、darwin-x64、darwin-arm64）。0.2.0 发布前，请用源码构建体验新能力。
+> **版本状态**：**0.2.0 已发布到 npm / PyPI**，包含 49 条规则、策略权威性、lock/audit 哈希链和 install 加固。GitHub Release v0.2.0 的二进制资产正在补发；当前 Release 页面仍为 v0.1.1。
 
 ### 方式一：单文件二进制（推荐）
 
 单文件、无运行时依赖，适合本机扫描和 CI。
 
-**从 Release 下载**（v0.1.1）：下载对应平台的 `skillguard` / `skillguard.exe`，放到 `PATH` 或项目目录。
+**从 Release 下载**（v0.2.0 资产补发中；当前可下载 v0.1.1）：下载对应平台的 `skillguard` / `skillguard.exe`，放到 `PATH` 或项目目录。0.2.0 的 npm/PyPI 包已经包含相同的单文件二进制。
 
 **从源码构建**：
 
@@ -184,8 +184,10 @@ bash scripts/build.sh
 已发布（多平台），一行命令：
 
 ```bash
-npx --yes seramys-skillguard@0.1.1 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.2.0 scan ./skills --fail-on high
 ```
+
+> 如果本机 npm 使用镜像源且尚未同步 0.2.0，可临时加 `--registry=https://registry.npmjs.org/`，或等镜像同步。
 
 全局安装：
 
@@ -206,7 +208,7 @@ node packages/npm/bin/skillguard.js scan ./tests/fixtures/clean-skill --no-color
 </p>
 <p align="center"><sub>Node 启动器只是薄壳，扫描仍由同一份 Rust 单文件二进制完成。</sub></p>
 
-npm 包把 4 个平台二进制放在 `vendor/<platform>-<arch>/`。0.1.1 已包含 `win32-x64`、`linux-x64`、`darwin-x64`、`darwin-arm64`，`packages/npm/lib/resolve.js` 会按当前平台选择。
+npm 包把 4 个平台二进制放在 `vendor/<platform>-<arch>/`。0.2.0 已包含 `win32-x64`、`linux-x64`、`darwin-x64`、`darwin-arm64`，`packages/npm/lib/resolve.js` 会按当前平台选择。
 
 ### 方式三：Python 生态
 
@@ -217,7 +219,7 @@ pip install seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
 
-> 0.1.1 为 Windows、Linux、macOS 提供独立的平台 wheel（win_amd64、manylinux_2_17_x86_64、macOS arm64/universal2）。
+> 0.2.0 为 Windows、Linux、macOS 提供独立的平台 wheel（win_amd64、manylinux_2_17_x86_64、macOS arm64/universal2），已发布到 PyPI。
 
 **仓库内验证**：
 
@@ -723,7 +725,7 @@ skillguard rules validate ./examples/extra-rules
 ## CI 集成
 
 <p align="center">
-  <img src="docs/assets/diagrams/ci-flow.png" width="980" alt="SkillGuard CI 流程：提交、矩阵测试、扫描、SARIF、Code Scanning">
+  <img src="docs/assets/diagrams/ci-flow.svg" width="980" alt="SkillGuard CI 流程：提交、矩阵测试、扫描、SARIF、Code Scanning">
 </p>
 
 ### 在你的仓库里扫描（今天就能用）
@@ -758,10 +760,10 @@ jobs:
 
 ### 使用本仓库的 composite Action（npm 包已发布，含 4 平台二进制）
 
-`action.yml` 已包含在仓库中，通过 `npx seramys-skillguard` 运行；npm 包 0.1.1 已内含 4 个平台二进制。0.2.0 的 Action 默认版本已对齐源码版本，但需要等 0.2.0 发布到 npm 后才可用。当前建议固定到已发布标签：
+`action.yml` 已包含在仓库中，通过 `npx seramys-skillguard` 运行；npm 包 0.2.0 已内含 4 个平台二进制。固定到发布标签：
 
 ```yaml
-- uses: Seramys/skillguard@v0.1.1
+- uses: Seramys/skillguard@v0.2.0
   with:
     path: "."
     fail-on: high
@@ -773,11 +775,11 @@ jobs:
 | `path` | `.` | 要扫描的目录 |
 | `fail-on` | `high` | `low` / `medium` / `high` / `critical` / `none` |
 | `format` | `sarif` | `text` / `json` / `sarif`，输出到运行日志 |
-| `version` | `0.2.0`（发布后可用；当前 npm 最新为 `0.1.1`） | npm 包版本 |
+| `version` | `0.2.0` | npm 包版本 |
 
-> composite Action 只运行扫描并设置退出码；它不写 SARIF 文件。需要 Code Scanning 时，用 `npx --yes seramys-skillguard@0.1.1 scan . --format sarif > skillguard.sarif`，或使用上面的本地构建工作流。
+> composite Action 只运行扫描并设置退出码；它不写 SARIF 文件。需要 Code Scanning 时，用 `npx --yes seramys-skillguard@0.2.0 scan . --format sarif > skillguard.sarif`，或使用上面的本地构建工作流。
 
-> npm 包 0.1.1 已包含 win32-x64、linux-x64、darwin-x64、darwin-arm64；Action 自测在 ubuntu/windows/macos x64 上 3/3 通过：[运行记录](https://github.com/Seramys/skillguard/actions/runs/44661440348)。
+> npm 包 0.2.0 已包含 win32-x64、linux-x64、darwin-x64、darwin-arm64；Action 自测在 ubuntu/windows/macos x64 上 3/3 通过：[运行记录](https://github.com/Seramys/skillguard/actions/runs/44661440348)。
 
 ### 通用 CI
 
@@ -857,7 +859,7 @@ python bench/run.py --exe target/release/skillguard --split holdout \
 
 门禁参数在 `bench/manifest.json`：`target_fpr=0.05`、`max_fpr_upper=0.10`、`min_recall_at_fpr=0.64`（诚实的回归下限，不是产品目标）、`target_recall_at_fpr=0.90`（尚未达到）。`bench/reports/` 只提交摘要和 Markdown，原始逐样本 JSON 不提交。
 
-> 该基准跑的是工作区源码。已发布的 0.1.1 不包含本次新增的容器、pyc、空白填充、环境变量、MCP、策略/审计/install 加固与规则消歧；0.2.0 发布后这些能力才进入二进制分发。
+> 该基准跑的是工作区源码。0.2.0 的 npm/PyPI 包已包含本次新增的容器、pyc、空白填充、环境变量、MCP、策略/审计/install 加固与规则消歧；GitHub Release v0.2.0 的独立二进制资产正在补发。
 
 **LLM 语义层已暂停**：当前候选队列消融只有 40% recall（4/10），且 7B 模型的风险标定偏保守；在规则-only 基线稳定和校准完成前，不进入 `skillguard scan` 主路径，也不把本地推理作为发布依赖。
 
@@ -890,12 +892,7 @@ python bench/candidates.py
 
 ## 验证
 
-<p align="center">
-  <img src="docs/assets/screenshots/verification.png" width="980" alt="SkillGuard 本地验证报告（0.1.1 历史截图）">
-</p>
-<p align="center"><sub>0.1.1 历史验证截图；0.2.0 最新数字见下表。</sub></p>
-
-本地验证环境：Windows 11 x64，SkillGuard 0.2.0 源码，2026-11-20；已发布二进制为 0.1.1。Action 自测在 GitHub Actions 三平台完成（2026-11-20）。
+本地验证环境：Windows 11 x64，SkillGuard 0.2.0 源码，2026-11-20；npm/PyPI 已发布 0.2.0，GitHub Release 二进制资产补发中。Action 自测在 GitHub Actions 三平台完成（2026-11-20）。
 
 | 检查项 | 命令 | 结果 |
 |---|---|---|
@@ -907,14 +904,9 @@ python bench/candidates.py
 | 自扫描 | `target/release/skillguard scan .` | PASS · 0 high · 4 medium / 3 low |
 | SARIF | `--format sarif` | valid 2.1.0 · 49 rules · 7 results |
 | npm 包 | `npm pack --dry-run` | 0.2.0 metadata · 4 platform binaries |
-| PyPI | `twine upload` | 0.1.1 已发布；0.2.0 构建待发布 |
-| Python 启动器 | `skillguard version` | 源码 0.2.0；已发布 0.1.1 |
+| PyPI | `twine upload` | 0.2.0 已发布（4 个平台 wheel） |
+| Python 启动器 | `skillguard version` | skillguard 0.2.0 |
 | GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/runs/44661440348) | 3/3 passed · linux/windows/macos x64 |
-
-<p align="center">
-  <img src="docs/assets/screenshots/self-scan.png" width="900" alt="SkillGuard 自扫描历史截图">
-</p>
-<p align="center"><sub>0.1.1 历史自扫描截图；0.2.0 源码自扫描为 PASS，0 high，4 medium / 3 low。</sub></p>
 
 <details>
 <summary><b>展开：原始测试输出</b></summary>
@@ -1027,14 +1019,14 @@ LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不�
 <details>
 <summary><b>支持哪些平台？</b></summary>
 
-源码支持 Windows / Linux / macOS；CI 矩阵在三平台运行测试和 release 构建。0.2.0 源码在 Windows 11 x64 完成本地验证；已发布 0.1.1 的 Release 提供四个平台二进制，npm/PyPI 平台包以实际发布产物为准。
+源码支持 Windows / Linux / macOS；CI 矩阵在三平台运行测试和 release 构建。0.2.0 在 Windows 11 x64 完成本地验证，npm/PyPI 已提供四平台包；GitHub Release v0.2.0 的独立二进制资产正在补发。
 
 </details>
 
 <details>
 <summary><b>npm / PyPI 已经发布了吗？</b></summary>
 
-0.1.1 已发布到 npm / PyPI，包含 Windows、Linux、macOS x64/arm64。0.2.0 已在 `release/0.2.0` 源码分支准备，但尚未发布到 npm/PyPI；发布前请用源码构建，其他架构也请源码构建。
+0.2.0 已发布到 npm / PyPI，包含 Windows、Linux、macOS x64/arm64 平台包。GitHub Release v0.2.0 的独立二进制资产正在补发；其他架构请源码构建。
 
 </details>
 
@@ -1058,7 +1050,7 @@ LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不�
 
 > 以下是方向，不是承诺；优先级会根据真实使用反馈调整。
 
-- **0.2（当前源码分支）**：策略权威性、lock/audit 哈希链、install 加固、49 条规则与公开/扩展双基准。
+- **0.2（npm/PyPI 已发布）**：策略权威性、lock/audit 哈希链、install 加固、49 条规则与公开/扩展双基准。
 - **0.3**：提升真实 holdout 的召回（目标 90%）、补齐容器/pyc 解析、规则回归框架；LLM 语义层保持可选项并暂停默认集成。
 - **1.0**：运行时 Agent 网关、工具调用审批、集中策略与审计控制台。
 
