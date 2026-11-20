@@ -159,6 +159,7 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     parser.add_argument("--generated-manifest", type=Path, default=DEFAULT_GENERATED)
     parser.add_argument("--imported-manifest", type=Path, default=DEFAULT_IMPORTED)
+    parser.add_argument("--no-imported", action="store_true", help="ignore local real corpus (public smoke)")
     parser.add_argument("--include-provisional", action="store_true")
     parser.add_argument("--split", default="all", choices=["all", "dev", "test", "holdout", "base"])
     parser.add_argument("--only", default="")
@@ -176,7 +177,7 @@ def main() -> int:
     if args.generated_manifest.exists():
         generated = json.loads(args.generated_manifest.read_text(encoding="utf-8"))
         samples.extend(generated.get("samples", []))
-    if args.imported_manifest.exists():
+    if not args.no_imported and args.imported_manifest.exists():
         imported = json.loads(args.imported_manifest.read_text(encoding="utf-8"))
         samples.extend(imported.get("samples", []))
     target_fpr = args.target_fpr if args.target_fpr is not None else manifest.get("target_fpr", 0.05)
@@ -243,7 +244,7 @@ def main() -> int:
             encoding="utf-8",
         )
 
-    version = args.version or "0.1.1"
+    version = args.version or "0.2.0"
     stamp = datetime.date.today().isoformat()
     version_json = args.json_out.parent / f"v{version}-{stamp}.json"
     version_md = args.md_out.parent / f"v{version}-{stamp}.md"

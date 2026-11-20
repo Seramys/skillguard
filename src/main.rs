@@ -723,7 +723,13 @@ fn cmd_scan(args: &[String]) -> Result<i32, String> {
         ),
         "sarif" => println!("{}", report::to_sarif(&outcome, VERSION, &compiled)),
         _ => {
-            report::print_text(&outcome, VERSION, report_threshold, color, parsed.has("quiet"));
+            report::print_text(
+                &outcome,
+                VERSION,
+                report_threshold,
+                color,
+                parsed.has("quiet"),
+            );
         }
     }
 

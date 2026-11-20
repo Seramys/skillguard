@@ -1207,16 +1207,37 @@ fn directive_matches(rest: &str, rule_id: &str) -> bool {
 }
 
 fn find_hidden(line: &str, first_line: bool) -> Option<(usize, char)> {
-    for (idx, ch) in line.chars().enumerate() {
+    let chars: Vec<char> = line.chars().collect();
+    for (idx, &ch) in chars.iter().enumerate() {
         if !is_hidden_char(ch) {
             continue;
         }
         if first_line && idx == 0 && ch == '\u{feff}' {
             continue;
         }
+        if ch == '\u{200d}' && is_emoji_joiner(&chars, idx) {
+            continue;
+        }
         return Some((idx + 1, ch));
     }
     None
+}
+
+fn is_emoji_joiner(chars: &[char], idx: usize) -> bool {
+    let prev = chars[..idx].iter().rev().find(|ch| **ch != '\u{fe0f}');
+    let next = chars[idx + 1..].iter().find(|ch| **ch != '\u{fe0f}');
+    matches!((prev, next), (Some(prev), Some(next)) if is_emoji_like(*prev) && is_emoji_like(*next))
+}
+
+fn is_emoji_like(ch: char) -> bool {
+    matches!(
+        ch as u32,
+        0x1F000..=0x1FAFF
+            | 0x2600..=0x27BF
+            | 0x2190..=0x21FF
+            | 0x2300..=0x23FF
+            | 0x2B00..=0x2BFF
+    )
 }
 
 fn is_hidden_char(ch: char) -> bool {
@@ -1448,6 +1469,13 @@ mod tests {
         assert!(is_suppressed(&lines, 1, "SG-CMD-001", &supp));
         assert!(is_suppressed(&lines, 2, "SG-NET-002", &supp));
         assert!(!is_suppressed(&lines, 1, "SG-NET-002", &supp));
+    }
+
+    #[test]
+    fn emoji_joiner_is_not_hidden() {
+        assert!(find_hidden("\u{1f9d1}\u{200d}\u{2696}\u{fe0f}", false).is_none());
+        assert!(find_hidden("a\u{200d}b", false).is_some());
+        assert!(find_hidden("hello\u{200b}world", false).is_some());
     }
 
     #[test]

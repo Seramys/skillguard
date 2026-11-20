@@ -127,8 +127,7 @@ pub fn builtin_rules_hash() -> String {
 }
 
 pub fn file_hash(path: &Path) -> Result<String, String> {
-    let data = fs::read(path)
-        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    let data = fs::read(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
     let mut hasher = Sha256::new();
     hasher.update(&data);
     Ok(hex(&hasher.finalize()))
@@ -305,7 +304,9 @@ fn validate_rule_pattern(pattern: &str, field: &str) -> Result<(), String> {
         .chars()
         .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '*'))
     {
-        return Err(format!("policy {field} contains invalid rule pattern: {pattern}"));
+        return Err(format!(
+            "policy {field} contains invalid rule pattern: {pattern}"
+        ));
     }
     Ok(())
 }
@@ -451,8 +452,8 @@ fn last_audit_hash(path: &Path) -> Result<Option<String>, String> {
         if line.trim().is_empty() {
             continue;
         }
-        let value: serde_json::Value = serde_json::from_str(line)
-            .map_err(|e| format!("audit chain is corrupt: {e}"))?;
+        let value: serde_json::Value =
+            serde_json::from_str(line).map_err(|e| format!("audit chain is corrupt: {e}"))?;
         let hash = value
             .get("entry_hash")
             .and_then(|value| value.as_str())
@@ -484,6 +485,7 @@ pub fn append_audit(path: &Path, mut entry: AuditEntry) -> Result<(), String> {
     writeln!(file, "{line}").map_err(|e| format!("cannot write audit {}: {e}", path.display()))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn audit_entry(
     action: &str,
     subject: &str,

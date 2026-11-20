@@ -1,0 +1,10 @@
+{
+  "benign_detected": [
+    "clawhub-cue-pre-market-strategy",
+    "clawhub-iterate-skill",
+    "clawhub-rockdesk",
+    "clawhub-kling-ai-mcp",
+    "clawhub-your-downloader"
+  ],
+  "threshold": "high"
+}

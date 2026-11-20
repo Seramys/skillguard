@@ -22,6 +22,10 @@ __pycache__/
 /bench/samples/real/
 /bench/imported/
 /bench/results/
+# raw reports can embed sample metadata; commit summaries and Markdown only
+/bench/reports/*.json
+/bench/reports/v*
+!/bench/reports/*-summary.json
 !bench/samples/zh/zh-pyc-mismatch/__pycache__/
 !bench/samples/zh/zh-pyc-mismatch/__pycache__/*.pyc
 

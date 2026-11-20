@@ -1,0 +1,252 @@
+{
+  "version": "0.2.0",
+  "split": "all",
+  "metrics": {
+    "rank": 3,
+    "threshold": "high",
+    "tp": 335,
+    "fn": 0,
+    "fp": 0,
+    "tn": 532,
+    "recall": 1.0,
+    "fpr": 0.0,
+    "malicious": 335,
+    "benign": 532,
+    "recall_ci95": [
+      0.9886625491084918,
+      0.9999999999999999
+    ],
+    "fpr_ci95": [
+      0.0,
+      0.007169282862696736
+    ],
+    "precision": 1.0,
+    "f1": 1.0
+  },
+  "split_metrics": {
+    "base": {
+      "rank": 3,
+      "threshold": "high",
+      "tp": 15,
+      "fn": 0,
+      "fp": 0,
+      "tn": 12,
+      "recall": 1.0,
+      "fpr": 0.0,
+      "malicious": 15,
+      "benign": 12,
+      "recall_ci95": [
+        0.7961107336956521,
+        1.0
+      ],
+      "fpr_ci95": [
+        0.0,
+        0.2425007574992425
+      ],
+      "precision": 1.0,
+      "f1": 1.0
+    },
+    "dev": {
+      "rank": 3,
+      "threshold": "high",
+      "tp": 107,
+      "fn": 0,
+      "fp": 0,
+      "tn": 174,
+      "recall": 1.0,
+      "fpr": 0.0,
+      "malicious": 107,
+      "benign": 174,
+      "recall_ci95": [
+        0.9653415324210404,
+        1.0
+      ],
+      "fpr_ci95": [
+        0.0,
+        0.021601245152990077
+      ],
+      "precision": 1.0,
+      "f1": 1.0
+    },
+    "holdout": {
+      "rank": 3,
+      "threshold": "high",
+      "tp": 106,
+      "fn": 0,
+      "fp": 0,
+      "tn": 173,
+      "recall": 1.0,
+      "fpr": 0.0,
+      "malicious": 106,
+      "benign": 173,
+      "recall_ci95": [
+        0.9650260010779157,
+        0.9999999999999998
+      ],
+      "fpr_ci95": [
+        0.0,
+        0.021723395400177335
+      ],
+      "precision": 1.0,
+      "f1": 1.0
+    },
+    "test": {
+      "rank": 3,
+      "threshold": "high",
+      "tp": 107,
+      "fn": 0,
+      "fp": 0,
+      "tn": 173,
+      "recall": 1.0,
+      "fpr": 0.0,
+      "malicious": 107,
+      "benign": 173,
+      "recall_ci95": [
+        0.9653415324210404,
+        1.0
+      ],
+      "fpr_ci95": [
+        0.0,
+        0.021723395400177335
+      ],
+      "precision": 1.0,
+      "f1": 1.0
+    }
+  },
+  "rule_stats": [
+    {
+      "rule_id": "SG-PERM-001",
+      "tp": 207,
+      "fp": 318
+    },
+    {
+      "rule_id": "SG-CMD-004",
+      "tp": 25,
+      "fp": 29
+    },
+    {
+      "rule_id": "SG-PI-008",
+      "tp": 25,
+      "fp": 29
+    },
+    {
+      "rule_id": "SG-DATA-001",
+      "tp": 71,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-DATA-002",
+      "tp": 71,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-CONT-001",
+      "tp": 69,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PERM-002",
+      "tp": 49,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-CONT-002",
+      "tp": 44,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-CONT-003",
+      "tp": 44,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-HYG-002",
+      "tp": 44,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-COMBO-004",
+      "tp": 25,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-COMBO-005",
+      "tp": 25,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PI-001",
+      "tp": 25,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PYC-001",
+      "tp": 25,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-SUPPLY-004",
+      "tp": 25,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-CMD-003",
+      "tp": 24,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-COMBO-003",
+      "tp": 24,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-NET-001",
+      "tp": 24,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-NET-003",
+      "tp": 24,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-NET-004",
+      "tp": 24,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-OBF-003",
+      "tp": 24,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PI-006",
+      "tp": 24,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PI-007",
+      "tp": 24,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PYC-002",
+      "tp": 24,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-CONT-004",
+      "tp": 22,
+      "fp": 0
+    }
+  ],
+  "failures": [],
+  "false_positives": [],
+  "new_false_positives": [],
+  "sample_counts": {
+    "malicious": 335,
+    "benign": 532,
+    "total": 867
+  },
+  "note": "Counts and metrics only; sample contents are intentionally not committed."
+}

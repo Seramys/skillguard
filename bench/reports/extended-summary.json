@@ -1,0 +1,289 @@
+{
+  "version": "0.2.0",
+  "split": "holdout",
+  "metrics": {
+    "rank": 3,
+    "threshold": "high",
+    "tp": 131,
+    "fn": 71,
+    "fp": 5,
+    "tn": 335,
+    "recall": 0.6485148514851485,
+    "fpr": 0.014705882352941176,
+    "malicious": 202,
+    "benign": 340,
+    "recall_ci95": [
+      0.5804609407131884,
+      0.7110253283402974
+    ],
+    "fpr_ci95": [
+      0.006297308643008131,
+      0.033958437025927796
+    ],
+    "precision": 0.9632352941176471,
+    "f1": 0.7751479289940829
+  },
+  "split_metrics": {
+    "holdout": {
+      "rank": 3,
+      "threshold": "high",
+      "tp": 131,
+      "fn": 71,
+      "fp": 5,
+      "tn": 335,
+      "recall": 0.6485148514851485,
+      "fpr": 0.014705882352941176,
+      "malicious": 202,
+      "benign": 340,
+      "recall_ci95": [
+        0.5804609407131884,
+        0.7110253283402974
+      ],
+      "fpr_ci95": [
+        0.006297308643008131,
+        0.033958437025927796
+      ],
+      "precision": 0.9632352941176471,
+      "f1": 0.7751479289940829
+    }
+  },
+  "rule_stats": [
+    {
+      "rule_id": "SG-PERM-001",
+      "tp": 74,
+      "fp": 62
+    },
+    {
+      "rule_id": "SG-DATA-001",
+      "tp": 26,
+      "fp": 12
+    },
+    {
+      "rule_id": "SG-SC-001",
+      "tp": 2,
+      "fp": 12
+    },
+    {
+      "rule_id": "SG-PERM-002",
+      "tp": 20,
+      "fp": 3
+    },
+    {
+      "rule_id": "SG-CMD-003",
+      "tp": 8,
+      "fp": 2
+    },
+    {
+      "rule_id": "SG-PI-008",
+      "tp": 8,
+      "fp": 2
+    },
+    {
+      "rule_id": "SG-HYG-001",
+      "tp": 0,
+      "fp": 1
+    },
+    {
+      "rule_id": "SG-DATA-002",
+      "tp": 24,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-CONT-001",
+      "tp": 22,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-NET-004",
+      "tp": 18,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-NET-003",
+      "tp": 15,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-CONT-002",
+      "tp": 14,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-CONT-003",
+      "tp": 14,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-HYG-002",
+      "tp": 14,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PI-006",
+      "tp": 12,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PI-001",
+      "tp": 11,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-NET-001",
+      "tp": 10,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-CMD-004",
+      "tp": 8,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-COMBO-004",
+      "tp": 8,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-COMBO-005",
+      "tp": 8,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-OBF-003",
+      "tp": 8,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PYC-002",
+      "tp": 8,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-SUPPLY-004",
+      "tp": 8,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-COMBO-003",
+      "tp": 7,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-CONT-004",
+      "tp": 7,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PI-007",
+      "tp": 7,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PYC-001",
+      "tp": 7,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-NET-002",
+      "tp": 2,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-PI-003",
+      "tp": 2,
+      "fp": 0
+    },
+    {
+      "rule_id": "SG-COMBO-001",
+      "tp": 1,
+      "fp": 0
+    }
+  ],
+  "failures": [
+    "msb-malicious-holdout-ASB04_000001",
+    "msb-malicious-holdout-ASB04_000002",
+    "msb-malicious-holdout-ASB04_000005",
+    "msb-malicious-holdout-ASB04_000007",
+    "msb-malicious-holdout-ASB04_000015",
+    "msb-malicious-holdout-ASB04_000025",
+    "msb-malicious-holdout-ASB04_000030",
+    "msb-malicious-holdout-ASB04_000038",
+    "msb-malicious-holdout-ASB04_000045",
+    "msb-malicious-holdout-ASB04_000050",
+    "msb-malicious-holdout-ASB04_000053",
+    "msb-malicious-holdout-ASB04_000055",
+    "msb-malicious-holdout-ASB04_000059",
+    "msb-malicious-holdout-ASB04_000062",
+    "msb-malicious-holdout-ASB04_000069",
+    "msb-malicious-holdout-ASB04_000071",
+    "msb-malicious-holdout-ASB04_000073",
+    "msb-malicious-holdout-ASB04_000076",
+    "msb-malicious-holdout-ASB04_000077",
+    "msb-malicious-holdout-ASB04_000081",
+    "msb-malicious-holdout-ASB04_000083",
+    "msb-malicious-holdout-ASB04_000084",
+    "msb-malicious-holdout-ASB04_000089",
+    "msb-malicious-holdout-ASB04_000097",
+    "msb-malicious-holdout-ASB04_000100",
+    "msb-malicious-holdout-ASB04_000110",
+    "msb-malicious-holdout-ASB04_000114",
+    "msb-malicious-holdout-ASB04_000118",
+    "msb-malicious-holdout-ASB04_000126",
+    "msb-malicious-holdout-ASB04_000132",
+    "msb-malicious-holdout-ASB04_000133",
+    "msb-malicious-holdout-ASB04_000135",
+    "msb-malicious-holdout-ASB04_000136",
+    "msb-malicious-holdout-ASB04_000137",
+    "msb-malicious-holdout-ASB04_000146",
+    "msb-malicious-holdout-ASB04_000152",
+    "msb-malicious-holdout-ASB04_000161",
+    "msb-malicious-holdout-ASB04_000165",
+    "msb-malicious-holdout-ASB04_000167",
+    "msb-malicious-holdout-ASB04_000168",
+    "msb-malicious-holdout-ASB04_000173",
+    "msb-malicious-holdout-ASB04_000176",
+    "msb-malicious-holdout-ASB04_000179",
+    "msb-malicious-holdout-ASB04_000180",
+    "msb-malicious-holdout-ASB04_000186",
+    "msb-malicious-holdout-ASB04_000189",
+    "msb-malicious-holdout-ASB04_000198",
+    "msb-malicious-holdout-ASB04_000200",
+    "msb-malicious-holdout-ASB04_000202",
+    "msb-malicious-holdout-ASB04_000206",
+    "msb-malicious-holdout-ASB04_000211",
+    "msb-malicious-holdout-ASB04_000230",
+    "msb-malicious-holdout-ASB04_000234",
+    "msb-malicious-holdout-ASB04_000242",
+    "msb-malicious-holdout-ASB04_000243",
+    "msb-malicious-holdout-ASB04_000254",
+    "msb-malicious-holdout-ASB04_000257",
+    "msb-malicious-holdout-ASB04_000260",
+    "msb-malicious-holdout-ASB04_000262",
+    "msb-malicious-holdout-ASB04_000269",
+    "msb-malicious-holdout-ASB04_000271",
+    "msb-malicious-holdout-ASB04_000274",
+    "msb-malicious-holdout-ASB04_000277",
+    "msb-malicious-holdout-ASB04_000278",
+    "msb-malicious-holdout-ASB04_000280",
+    "msb-malicious-holdout-ASB04_000283",
+    "msb-malicious-holdout-ASB04_000288",
+    "msb-malicious-holdout-ASB04_000290",
+    "msb-malicious-holdout-ASB04_000294",
+    "msb-malicious-holdout-ASB04_000295",
+    "msb-malicious-holdout-ASB04_000298"
+  ],
+  "false_positives": [
+    "clawhub-cue-pre-market-strategy",
+    "clawhub-iterate-skill",
+    "clawhub-rockdesk",
+    "clawhub-kling-ai-mcp",
+    "clawhub-your-downloader"
+  ],
+  "new_false_positives": [],
+  "sample_counts": {
+    "malicious": 202,
+    "benign": 340,
+    "total": 542
+  },
+  "note": "Counts and metrics only; sample contents are intentionally not committed."
+}

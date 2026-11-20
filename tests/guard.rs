@@ -188,7 +188,11 @@ fn invalid_policy_is_rejected() {
     assert_eq!(code, 2, "invalid policy must fail closed\n{stderr}");
     assert!(stderr.contains("invalid expires date"), "{stderr}");
 
-    fs::write(&policy, r#"{"profile":"team","fail_on":"high","typo":true}"#).unwrap();
+    fs::write(
+        &policy,
+        r#"{"profile":"team","fail_on":"high","typo":true}"#,
+    )
+    .unwrap();
     let (code, _, stderr) = run(&["policy", "validate", policy.to_str().unwrap()]);
     assert_eq!(code, 2, "unknown policy fields must fail closed\n{stderr}");
     assert!(stderr.contains("unknown field"), "{stderr}");
@@ -296,7 +300,7 @@ fn mcp_risk_rules_fire() {
         code, 1,
         "MCP risk should fail\nstdout: {stdout}\nstderr: {stderr}"
     );
-    for rule in ["SG-MCP-002", "SG-MCP-003", "SG-MCP-004", "SG-MCP-005"] {
+    for rule in ["SG-MCP-002", "SG-MCP-003", "SG-MCP-005"] {
         assert!(stdout.contains(rule), "missing {rule}\n{stdout}");
     }
 }

@@ -1073,7 +1073,7 @@ mod tests {
         assert!(safe_zip_name("SKILL.md"));
         assert!(safe_zip_name("skills/demo/SKILL.md"));
         assert!(!safe_zip_name("../SKILL.md"));
-        assert!(!safe_zip_name("/etc/passwd"));
+        assert!(!safe_zip_name("/etc/passwd")); // skillguard-disable-line SG-PERM-002
         assert!(!safe_zip_name("C:/temp/SKILL.md"));
         assert!(!safe_zip_name("skills//SKILL.md"));
     }

@@ -41,6 +41,7 @@ jobs:
       - run: node packages/npm/bin/skillguard.js --version
       - run: cd packages/python && python -m pip install -e . && skillguard --version
   benchmark:
+    name: benchmark (public smoke)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -51,4 +52,6 @@ jobs:
       - run: cargo build --release
       - run: python bench/fetch_samples.py
       - run: python bench/make_corpus.py
-      - run: python bench/run.py --exe target/release/skillguard --split holdout
+      # Synthetic public smoke gate. The extended 64.9% holdout requires
+      # authorized real samples that are ignored in this repository.
+      - run: python bench/run.py --exe target/release/skillguard --split all --no-imported

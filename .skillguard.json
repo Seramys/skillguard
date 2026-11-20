@@ -16,6 +16,8 @@
     "examples",
     "packages/python/src/skillguard/__pycache__",
     ".codeartsdoer",
+    ".qoder-data",
+    ".cache",
     "README.md",
     "packages/npm/vendor",
     "packages/python/src/skillguard/_bin",
