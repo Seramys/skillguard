@@ -1,22 +1,26 @@
 use crate::engine::{self, ScanOptions};
 use crate::frontmatter;
+use crate::guard::{self, Decision};
 use crate::model::{Finding, Severity};
 use crate::rules;
+use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use zip::ZipArchive;
 
 const RECEIPT: &str = ".skillguard-receipt.json";
 const MAX_TREE_FILES: usize = 10_000;
 const MAX_TREE_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_DOWNLOAD_BYTES: u64 = 64 * 1024 * 1024;
+const MAX_ZIP_ENTRIES: usize = 10_000;
 const MAX_ZIP_ENTRY_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_ZIP_TOTAL_BYTES: u64 = 128 * 1024 * 1024;
+const MAX_ZIP_RATIO: u64 = 200;
 
 #[derive(Debug, Clone)]
 pub struct InstallOptions {
@@ -26,6 +30,8 @@ pub struct InstallOptions {
     pub dest: Option<PathBuf>,
     pub target: Option<String>,
     pub rules_dir: Option<PathBuf>,
+    pub policy: Option<PathBuf>,
+    pub audit: Option<PathBuf>,
     pub allow_domains: Vec<String>,
     pub ignore_rules: Vec<String>,
     pub yes: bool,
@@ -106,7 +112,7 @@ pub struct FileEntry {
     pub size: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct Receipt {
     schema: String,
     tool_version: String,
@@ -118,6 +124,12 @@ struct Receipt {
     fingerprint: String,
     files: Vec<FileEntry>,
     findings: Counts,
+    finding_digests: Vec<String>,
+    rules_hash: String,
+    policy: Option<String>,
+    policy_hash: Option<String>,
+    receipt_hash: Option<String>,
+    signature: Option<String>,
 }
 
 #[derive(Debug)]
@@ -146,7 +158,35 @@ fn install_inner(opts: &InstallOptions, quarantine: &Path) -> Result<InstallOutc
         &opts.ignore_rules,
     )?;
     let skill = read_skill_name(&skill_root);
-    let verdict = verdict(&counts);
+    let rules_hash = guard::builtin_rules_hash();
+    let policy_path = opts.policy.as_ref();
+    let policy_hash = match policy_path {
+        Some(path) => Some(guard::file_hash(path)?),
+        None => None,
+    };
+    let policy_result = match policy_path {
+        Some(path) => {
+            let policy = guard::load_policy(path)?;
+            Some(guard::evaluate(&findings, &policy, Some(Severity::High)))
+        }
+        None => None,
+    };
+    let verdict = policy_result
+        .as_ref()
+        .map(|result| verdict_from_decision(result.decision))
+        .unwrap_or_else(|| verdict(&counts));
+    let decision = policy_result
+        .as_ref()
+        .map(|result| result.decision)
+        .unwrap_or_else(|| match verdict.as_str() {
+            "BLOCK" => Decision::Block,
+            "REVIEW" => Decision::Warn,
+            _ => Decision::Allow,
+        });
+    let reasons = policy_result
+        .as_ref()
+        .map(|result| result.reasons.clone())
+        .unwrap_or_default();
     let briefs: Vec<FindingBrief> = findings
         .iter()
         .take(20)
@@ -160,6 +200,23 @@ fn install_inner(opts: &InstallOptions, quarantine: &Path) -> Result<InstallOutc
         .collect();
 
     if opts.dry_run {
+        if let Some(audit) = &opts.audit {
+            let entry = guard::audit_entry(
+                "install-dry-run",
+                &source_label,
+                decision,
+                &findings,
+                &reasons,
+                policy_path
+                    .as_ref()
+                    .map(|path| path.display().to_string())
+                    .as_deref(),
+                policy_hash.as_deref(),
+                &rules_hash,
+                None,
+            );
+            guard::append_audit(audit, entry)?;
+        }
         return Ok(InstallOutcome {
             skill,
             source: source_label,
@@ -173,13 +230,13 @@ fn install_inner(opts: &InstallOptions, quarantine: &Path) -> Result<InstallOutc
         });
     }
 
-    if verdict == "BLOCK" && !opts.force {
+    if decision == Decision::Block && !opts.force {
         return Err(format!(
             "安装被阻止：{} critical, {} high。审查后如确需安装，使用 --force --yes。",
             counts.critical, counts.high
         ));
     }
-    if (verdict == "BLOCK" || verdict == "REVIEW") && !opts.yes {
+    if (decision == Decision::Block || decision == Decision::Warn) && !opts.yes {
         return Err(format!(
             "安装需要确认：verdict={verdict}（{} critical, {} high, {} medium）。确认后使用 --yes。",
             counts.critical, counts.high, counts.medium
@@ -214,7 +271,7 @@ fn install_inner(opts: &InstallOptions, quarantine: &Path) -> Result<InstallOutc
         verdict
     };
     let receipt = Receipt {
-        schema: "skillguard-receipt/v1".to_string(),
+        schema: "skillguard-receipt/v2".to_string(),
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
         skill: skill.clone(),
         source: source_label.clone(),
@@ -224,9 +281,32 @@ fn install_inner(opts: &InstallOptions, quarantine: &Path) -> Result<InstallOutc
         fingerprint: fingerprint.clone(),
         files,
         findings: counts.clone(),
+        finding_digests: guard::finding_digests(&findings),
+        rules_hash: rules_hash.clone(),
+        policy: policy_path.map(|path| path.display().to_string()),
+        policy_hash: policy_hash.clone(),
+        receipt_hash: None,
+        signature: None,
     };
     write_receipt(&stage, &receipt)?;
     atomic_install(&stage, &dest, opts.force)?;
+    if let Some(audit) = &opts.audit {
+        let entry = guard::audit_entry(
+            "install",
+            &source_label,
+            decision,
+            &findings,
+            &reasons,
+            policy_path
+                .as_ref()
+                .map(|path| path.display().to_string())
+                .as_deref(),
+            policy_hash.as_deref(),
+            &rules_hash,
+            Some(&fingerprint),
+        );
+        guard::append_audit(audit, entry)?;
+    }
 
     Ok(InstallOutcome {
         skill,
@@ -255,9 +335,10 @@ pub fn verify(path: &Path) -> Result<VerifyOutcome, String> {
         .map_err(|e| format!("缺少 receipt {}: {e}", receipt_path.display()))?;
     let receipt: Receipt = serde_json::from_str(&text)
         .map_err(|e| format!("receipt 解析失败 {}: {e}", receipt_path.display()))?;
-    if receipt.schema != "skillguard-receipt/v1" {
+    if receipt.schema != "skillguard-receipt/v2" {
         return Err(format!("不支持的 receipt schema: {}", receipt.schema));
     }
+    verify_receipt_integrity(&receipt)?;
     let (actual, files) = fingerprint_tree(&root)?;
     let old: BTreeMap<String, FileEntry> = receipt
         .files
@@ -381,6 +462,14 @@ fn verdict(counts: &Counts) -> String {
     }
 }
 
+fn verdict_from_decision(decision: Decision) -> String {
+    match decision {
+        Decision::Allow => "PASS".to_string(),
+        Decision::Warn => "REVIEW".to_string(),
+        Decision::Block => "BLOCK".to_string(),
+    }
+}
+
 fn resolve_destination(opts: &InstallOptions, skill: &str) -> Result<PathBuf, String> {
     if opts.dest.is_some() && opts.target.is_some() {
         return Err("--dest 和 --target 只能二选一".to_string());
@@ -463,9 +552,7 @@ fn now_unix() -> u64 {
 
 fn parse_remote(input: &str) -> Option<RemoteInput> {
     let trimmed = input.trim();
-    let rest = trimmed
-        .strip_prefix("https://github.com/")
-        .or_else(|| trimmed.strip_prefix("http://github.com/"))?;
+    let rest = trimmed.strip_prefix("https://github.com/")?;
     let mut parts = rest.trim_end_matches('/').split('/');
     let owner = parts.next()?.to_string();
     let repo = parts.next()?.trim_end_matches(".git").to_string();
@@ -493,89 +580,67 @@ fn resolve_remote(
     remote: &RemoteInput,
     requested_ref: Option<&str>,
 ) -> Result<(String, String), String> {
-    let api = format!(
-        "https://api.github.com/repos/{}/{}",
-        remote.owner, remote.repo
-    );
-    let info = http_json(&api)?;
-    let default_branch = info
-        .get("default_branch")
-        .and_then(|value| value.as_str())
-        .unwrap_or("main")
-        .to_string();
     let reference = requested_ref
         .or(remote.git_ref.as_deref())
-        .unwrap_or(&default_branch)
-        .to_string();
-    if is_commit_sha(&reference) {
-        return Ok((reference.clone(), reference));
+        .ok_or_else(|| "远程安装必须指定 40 位 commit SHA".to_string())?;
+    if !is_commit_sha(reference) {
+        return Err(format!(
+            "远程安装必须固定到 40 位 commit SHA，拒绝可变 ref: {reference}"
+        ));
     }
-    let commits = http_json(&format!(
-        "https://api.github.com/repos/{}/{}/commits?sha={}&per_page=1",
-        remote.owner,
-        remote.repo,
-        url_encode(&reference)
-    ))?;
-    let sha = commits
-        .get(0)
-        .and_then(|value| value.get("sha"))
-        .and_then(|value| value.as_str())
-        .ok_or_else(|| format!("无法解析 GitHub ref: {reference}"))?
-        .to_string();
-    Ok((sha, reference))
+    Ok((reference.to_string(), reference.to_string()))
+}
+
+fn http_agent() -> ureq::Agent {
+    ureq::AgentBuilder::new()
+        .timeout_connect(Duration::from_secs(10))
+        .timeout_read(Duration::from_secs(30))
+        .redirects(3)
+        .build()
 }
 
 fn download_github_zip(owner: &str, repo: &str, sha: &str) -> Result<Vec<u8>, String> {
     let url = format!("https://codeload.github.com/{owner}/{repo}/zip/{sha}");
-    let response = ureq::get(&url)
+    let response = http_agent()
+        .get(&url)
         .set("User-Agent", "skillguard")
         .call()
         .map_err(|error| format!("下载失败 {url}: {error}"))?;
     let mut data = Vec::new();
     response
         .into_reader()
-        .take(MAX_DOWNLOAD_BYTES)
+        .take(MAX_DOWNLOAD_BYTES + 1)
         .read_to_end(&mut data)
         .map_err(|error| format!("读取下载内容失败: {error}"))?;
+    if data.len() as u64 > MAX_DOWNLOAD_BYTES {
+        return Err("下载内容超过大小限制".to_string());
+    }
     if data.is_empty() {
         return Err("下载内容为空".to_string());
     }
     Ok(data)
 }
 
-fn http_json(url: &str) -> Result<serde_json::Value, String> {
-    let response = ureq::get(url)
-        .set("User-Agent", "skillguard")
-        .set("Accept", "application/vnd.github+json")
-        .call()
-        .map_err(|error| format!("GitHub API 请求失败 {url}: {error}"))?;
-    let mut body = String::new();
-    response
-        .into_reader()
-        .read_to_string(&mut body)
-        .map_err(|error| format!("读取 GitHub API 响应失败: {error}"))?;
-    serde_json::from_str(&body).map_err(|error| format!("GitHub API 返回非 JSON: {error}"))
-}
-
-fn url_encode(value: &str) -> String {
-    let mut out = String::new();
-    for byte in value.bytes() {
-        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') {
-            out.push(byte as char);
-        } else {
-            out.push_str(&format!("%{byte:02X}"));
-        }
-    }
-    out
-}
-
 fn is_commit_sha(value: &str) -> bool {
     value.len() == 40 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn safe_zip_name(raw_name: &str) -> bool {
+    !raw_name.is_empty()
+        && !raw_name.starts_with('/')
+        && !raw_name.starts_with('\\')
+        && !raw_name.contains(':')
+        && raw_name
+            .split('/')
+            .all(|part| !part.is_empty() && part != "." && part != "..")
 }
 
 fn extract_zip(data: &[u8], dest: &Path) -> Result<(), String> {
     let mut archive =
         ZipArchive::new(Cursor::new(data)).map_err(|error| format!("ZIP 解析失败: {error}"))?;
+    if archive.len() > MAX_ZIP_ENTRIES {
+        return Err("ZIP 条目数量超过限制".to_string());
+    }
     let mut total = 0u64;
     for index in 0..archive.len() {
         let entry = archive
@@ -588,14 +653,22 @@ fn extract_zip(data: &[u8], dest: &Path) -> Result<(), String> {
             return Err(format!("ZIP 包含符号链接，拒绝安装: {}", entry.name()));
         }
         let raw_name = entry.name().replace('\\', "/");
-        if raw_name.starts_with('/') || raw_name.split('/').any(|part| part == "..") {
+        if !safe_zip_name(&raw_name) {
             return Err(format!("ZIP 包含不安全路径: {raw_name}"));
         }
         let size = entry.size();
-        if size > MAX_ZIP_ENTRY_BYTES || total.saturating_add(size) > MAX_ZIP_TOTAL_BYTES {
-            return Err(format!("ZIP 条目过大或总大小超限: {raw_name}"));
+        let compressed = entry.compressed_size();
+        if size > MAX_ZIP_ENTRY_BYTES
+            || total.saturating_add(size) > MAX_ZIP_TOTAL_BYTES
+            || (size > 0 && compressed == 0)
+            || (compressed > 0 && size.saturating_div(compressed) > MAX_ZIP_RATIO)
+        {
+            return Err(format!("ZIP 条目过大、压缩比过高或总大小超限: {raw_name}"));
         }
         let out_path = dest.join(&raw_name);
+        if !out_path.starts_with(dest) {
+            return Err(format!("ZIP 条目逃逸目标目录: {raw_name}"));
+        }
         if let Some(parent) = out_path.parent() {
             fs::create_dir_all(parent)
                 .map_err(|e| format!("cannot create {}: {e}", parent.display()))?;
@@ -615,10 +688,13 @@ fn extract_zip(data: &[u8], dest: &Path) -> Result<(), String> {
 
 fn select_skill_root(extracted: &Path, subpath: Option<&str>) -> Result<PathBuf, String> {
     if let Some(subpath) = subpath {
-        if subpath.split('/').any(|part| part == "..") {
-            return Err("--path 不允许包含 ..".to_string());
+        if !safe_zip_name(subpath) {
+            return Err(format!("--path 不安全: {subpath}"));
         }
         let root = extracted.join(subpath);
+        if !root.starts_with(extracted) {
+            return Err("--path 逃逸解压目录".to_string());
+        }
         if !root.exists() {
             return Err(format!("--path 不存在: {}", root.display()));
         }
@@ -860,10 +936,66 @@ fn hex(bytes: &[u8]) -> String {
     out
 }
 
+fn sha256_hex(data: &[u8]) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(data);
+    hex(&hasher.finalize())
+}
+
+fn receipt_body(receipt: &Receipt) -> Result<String, String> {
+    let mut copy = receipt.clone();
+    copy.receipt_hash = None;
+    copy.signature = None;
+    serde_json::to_string(&copy).map_err(|error| format!("receipt 序列化失败: {error}"))
+}
+
+type HmacSha256 = Hmac<Sha256>;
+
+fn receipt_signature(body: &str) -> Result<Option<String>, String> {
+    let Some(key) = std::env::var_os("SKILLGUARD_RECEIPT_KEY") else {
+        return Ok(None);
+    };
+    let mut mac = HmacSha256::new_from_slice(key.to_string_lossy().as_bytes())
+        .map_err(|error| format!("invalid receipt signing key: {error}"))?;
+    mac.update(body.as_bytes());
+    Ok(Some(hex(&mac.finalize().into_bytes())))
+}
+
+fn sign_receipt(receipt: &mut Receipt) -> Result<(), String> {
+    let body = receipt_body(receipt)?;
+    receipt.receipt_hash = Some(sha256_hex(body.as_bytes()));
+    receipt.signature = receipt_signature(&body)?;
+    Ok(())
+}
+
+fn verify_receipt_integrity(receipt: &Receipt) -> Result<(), String> {
+    let body = receipt_body(receipt)?;
+    let expected = sha256_hex(body.as_bytes());
+    match receipt.receipt_hash.as_deref() {
+        Some(actual) if actual == expected => {}
+        _ => return Err("receipt 完整性校验失败".to_string()),
+    }
+    if let Some(signature) = receipt.signature.as_deref() {
+        let Some(key) = std::env::var_os("SKILLGUARD_RECEIPT_KEY") else {
+            return Err("receipt 带签名，但缺少 SKILLGUARD_RECEIPT_KEY".to_string());
+        };
+        let mut mac = HmacSha256::new_from_slice(key.to_string_lossy().as_bytes())
+            .map_err(|error| format!("invalid receipt signing key: {error}"))?;
+        mac.update(body.as_bytes());
+        let expected_signature = hex(&mac.finalize().into_bytes());
+        if signature != expected_signature {
+            return Err("receipt 签名校验失败".to_string());
+        }
+    }
+    Ok(())
+}
+
 fn write_receipt(stage: &Path, receipt: &Receipt) -> Result<(), String> {
+    let mut receipt = receipt.clone();
+    sign_receipt(&mut receipt)?;
     let path = stage.join(RECEIPT);
     let body =
-        serde_json::to_string_pretty(receipt).map_err(|e| format!("receipt 序列化失败: {e}"))?;
+        serde_json::to_string_pretty(&receipt).map_err(|e| format!("receipt 序列化失败: {e}"))?;
     fs::write(&path, format!("{body}\n"))
         .map_err(|e| format!("cannot write {}: {e}", path.display()))
 }
@@ -919,5 +1051,30 @@ mod tests {
     fn detects_commit_shas() {
         assert!(is_commit_sha("4ffbf9461ef0505f9ce76a0d3694a18ec33ea531"));
         assert!(!is_commit_sha("main"));
+    }
+
+    #[test]
+    fn rejects_insecure_sources() {
+        assert!(parse_remote("http://github.com/owner/repo").is_none());
+        assert!(parse_remote("https://example.com/owner/repo").is_none());
+    }
+
+    #[test]
+    fn requires_pinned_commit_for_remote_install() {
+        let remote = parse_remote("https://github.com/owner/repo/tree/main").unwrap();
+        assert!(resolve_remote(&remote, None).is_err());
+        let pinned = "4ffbf9461ef0505f9ce76a0d3694a18ec33ea531";
+        let remote = parse_remote(&format!("https://github.com/owner/repo/tree/{pinned}")).unwrap();
+        assert_eq!(resolve_remote(&remote, None).unwrap().0, pinned);
+    }
+
+    #[test]
+    fn rejects_unsafe_zip_names() {
+        assert!(safe_zip_name("SKILL.md"));
+        assert!(safe_zip_name("skills/demo/SKILL.md"));
+        assert!(!safe_zip_name("../SKILL.md"));
+        assert!(!safe_zip_name("/etc/passwd"));
+        assert!(!safe_zip_name("C:/temp/SKILL.md"));
+        assert!(!safe_zip_name("skills//SKILL.md"));
     }
 }

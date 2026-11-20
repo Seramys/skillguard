@@ -370,6 +370,7 @@ pub fn evaluate(
     let mut reasons = Vec::new();
     let mut blocked = false;
     let mut warned = false;
+    let mut effective_medium = 0usize;
 
     for finding in findings {
         if policy
@@ -407,20 +408,23 @@ pub fn evaluate(
                     threshold.as_str()
                 ));
             }
-            _ if finding.severity == Severity::Medium => warned = true,
+            _ if finding.severity == Severity::Medium => {
+                warned = true;
+                effective_medium += 1;
+            }
             _ => {}
         }
     }
-    if counts.medium > max_medium {
+    if effective_medium > max_medium {
         blocked = true;
         reasons.push(format!(
             "medium findings {} exceed max_medium={}",
-            counts.medium, max_medium
+            effective_medium, max_medium
         ));
     }
     let decision = if blocked {
         Decision::Block
-    } else if warned || counts.medium > 0 {
+    } else if warned {
         Decision::Warn
     } else {
         Decision::Allow
@@ -614,12 +618,7 @@ mod tests {
             fail_on: Some("high".to_string()),
             max_medium: Some(2),
             deny: Vec::new(),
-            allow: vec![Exception {
-                rule: "SG-PERM-001".to_string(),
-                owner: "alice".to_string(),
-                reason: "test".to_string(),
-                expires: Some("2999-01-01".to_string()),
-            }],
+            allow: Vec::new(),
         };
         let result = evaluate(
             &[finding("SG-PERM-001", Severity::Medium)],

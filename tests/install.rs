@@ -63,13 +63,81 @@ fn installs_clean_skill_and_verifies_fingerprint() {
     );
     assert!(dest.join(".skillguard-receipt.json").is_file());
     let receipt = fs::read_to_string(dest.join(".skillguard-receipt.json")).unwrap();
-    assert!(receipt.contains("\"schema\": \"skillguard-receipt/v1\""));
+    assert!(receipt.contains("\"schema\": \"skillguard-receipt/v2\""));
     assert!(receipt.contains("\"verdict\": \"PASS\""));
     assert!(receipt.contains("\"fingerprint\""));
+    assert!(receipt.contains("\"receipt_hash\""));
 
     let (code, stdout, stderr) = verify(&dest);
     assert_eq!(code, 0, "verify failed\nstdout: {stdout}\nstderr: {stderr}");
     assert!(stdout.contains("PASS (no drift)"), "{stdout}");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn verify_rejects_tampered_receipt() {
+    let root = temp_dir("receipt-tamper");
+    let dest = root.join("installed");
+    let (code, _, stderr) = install(&fixture("clean-skill"), &dest, &[]);
+    assert_eq!(code, 0, "{stderr}");
+    let receipt_path = dest.join(".skillguard-receipt.json");
+    let mut receipt = fs::read_to_string(&receipt_path).unwrap();
+    receipt = receipt.replace("\"verdict\": \"PASS\"", "\"verdict\": \"ALLOW\"");
+    fs::write(&receipt_path, receipt).unwrap();
+    let (code, _, stderr) = verify(&dest);
+    assert_eq!(code, 2, "tampered receipt must fail\n{stderr}");
+    assert!(stderr.contains("完整性校验失败"), "{stderr}");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn install_policy_can_allow_high_and_audit() {
+    let root = temp_dir("policy");
+    let dest = root.join("installed");
+    let policy = root.join("policy.json");
+    let audit = root.join("audit.jsonl");
+    fs::write(
+        &policy,
+        r#"{"profile":"team","fail_on":"high","allow":[{"rule":"*","owner":"alice","reason":"approved","expires":"2999-01-01"}]}"#,
+    )
+    .unwrap();
+    let (code, stdout, stderr) = install(
+        &fixture("dangerous-skill"),
+        &dest,
+        &[
+            "--policy",
+            policy.to_str().unwrap(),
+            "--audit",
+            audit.to_str().unwrap(),
+            "--json",
+        ],
+    );
+    assert_eq!(
+        code, 0,
+        "policy should allow install\nstdout: {stdout}\nstderr: {stderr}"
+    );
+    let body = fs::read_to_string(&audit).unwrap();
+    assert!(body.contains("\"action\":\"install\""), "{body}");
+    assert!(body.contains("\"decision\":\"ALLOW\""), "{body}");
+    assert!(body.contains("\"entry_hash\""), "{body}");
+    let receipt = fs::read_to_string(dest.join(".skillguard-receipt.json")).unwrap();
+    assert!(receipt.contains("\"policy_hash\""), "{receipt}");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn install_rejects_invalid_policy() {
+    let root = temp_dir("bad-policy");
+    let dest = root.join("installed");
+    let policy = root.join("policy.json");
+    fs::write(&policy, r#"{"fail_on":"urgent"}"#).unwrap();
+    let (code, _, stderr) = install(
+        &fixture("clean-skill"),
+        &dest,
+        &["--policy", policy.to_str().unwrap()],
+    );
+    assert_eq!(code, 2, "invalid policy must fail closed\n{stderr}");
+    assert!(stderr.contains("invalid policy fail_on"), "{stderr}");
     let _ = fs::remove_dir_all(root);
 }
 
