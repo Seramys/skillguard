@@ -1,0 +1,36 @@
+name: Action self-test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  action:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-x64
+          - os: windows-latest
+            name: windows-x64
+          - os: macos-15-intel
+            name: macos-x64
+    name: action (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan clean fixture
+        uses: Seramys/skillguard@v0.1.1
+        with:
+          path: tests/fixtures/clean-skill
+          format: text
+          fail-on: high
+      - name: Scan risky fixture without failing the job
+        uses: Seramys/skillguard@v0.1.1
+        with:
+          path: tests/fixtures/exfil-skill
+          format: text
+          fail-on: none
