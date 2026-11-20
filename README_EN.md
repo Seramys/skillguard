@@ -250,11 +250,6 @@ All three entry points share the same `rules/core.json` and `engine.rs`; there i
 | Combo | 5 | sensitive read + egress, injection + remote execution, env + egress, reassurance + registry hijack, container + bulk execution |
 | **Total** | **49** | JSON-defined rules; external packs are supported |
 
-<p align="center">
-  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="Rule and severity coverage: 49 rules across categories">
-</p>
-<p align="center"><sub>49 rules; combo rules correlate signals instead of matching a single string.</sub></p>
-
 ### Why combo rules matter
 
 Single-pattern rules are noisy and easy to bypass by splitting an attack across files. SkillGuard correlates signals within the same Skill:

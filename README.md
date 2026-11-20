@@ -274,11 +274,6 @@ bash scripts/build-all.sh     # 交叉编译矩阵；缺少工具链的目标会
 | 组合风险 | 5 | 敏感读取+外联、提示注入+远程执行、环境变量+外联、话术+registry 劫持、容器脚本+批量执行 |
 | **合计** | **49** | 规则均为 JSON 定义，可加载外部规则包 |
 
-<p align="center">
-  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="49 条规则的类别与严重度分布">
-</p>
-<p align="center"><sub>49 条规则的类别与严重度分布；组合规则负责跨信号关联。</sub></p>
-
 ### 组合规则为什么重要
 
 单条规则容易误报，也容易被拆开绕过。SkillGuard 会在同一个 Skill 内关联信号：

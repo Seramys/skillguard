@@ -145,10 +145,6 @@ Node / Python は薄いランチャーで、同じ Rust エンジンと `rules/c
 | 組み合わせ | 5 | 機密読取+外部通信、注入+実行、env+通信、安心文言+registry、コンテナ+一括実行 |
 | **合計** | **49** | JSON 定義、外部ルールパック対応 |
 
-<p align="center">
-  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="49 ルールのカテゴリと重要度">
-</p>
-
 組み合わせルール（`SG-COMBO-001` / `SG-COMBO-002`）は、単一の文字列ではなく複数シグナルを同一 Skill 内で関連付けます。片方のシグナルを抑制すると、組み合わせリスクも消えます。
 
 ---

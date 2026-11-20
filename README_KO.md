@@ -145,10 +145,6 @@ Node / Python 런처는 얇은 래퍼이며, 동일한 Rust 엔진과 `rules/cor
 | 조합 | 5 | 민감 읽기+외부 통신, 주입+원격 실행, env+통신, 안심 문구+registry, 컨테이너+일괄 실행 |
 | **합계** | **49** | JSON 정의, 외부 규칙 팩 지원 |
 
-<p align="center">
-  <img src="docs/assets/diagrams/rules-coverage.png" width="980" alt="49개 규칙의 카테고리와 심각도">
-</p>
-
 조합 규칙(`SG-COMBO-001` / `SG-COMBO-002`)은 단일 문자열이 아니라 동일 Skill 내의 여러 신호를 연관시킵니다. 한 신호를 억제하면 조합 위험도 사라집니다.
 
 ---
