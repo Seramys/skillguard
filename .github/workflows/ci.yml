@@ -41,7 +41,6 @@ jobs:
       - run: node packages/npm/bin/skillguard.js --version
       - run: cd packages/python && python -m pip install -e . && skillguard --version
   benchmark:
-    name: benchmark (public smoke)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
