@@ -13,7 +13,7 @@
       "references": ["https://owasp.org/www-project-top-10-for-large-language-model-applications/"],
       "match": {
         "type": "regex",
-        "pattern": "(?i)\\b(ignore|disregard|forget|override|bypass)\\b[^\\n]{0,60}\\b(previous|prior|above|system|developer|original|safety)\\b[^\\n]{0,30}\\b(instruction|prompt|rule|message|guardrail)s?\\b"
+        "pattern": "(?i)\\b(ignore|disregard|forget|override|bypass)\\b[^\\n]{0,60}\\b(previous|prior|above|system|developer|original|safety)\\b[^\\n]{0,30}\\b(instruction|prompt|rule|message|guardrail)s?\\b|(忽略|无视|忘记|覆盖|绕过)[^\\n]{0,30}(之前|以上|系统|开发者|原始)[^\\n]{0,20}(指令|提示|规则|消息|约束)"
       }
     },
     {
@@ -27,7 +27,7 @@
       "max_matches": 3,
       "match": {
         "type": "regex",
-        "pattern": "(?i)\\b(reveal|print|show|repeat|output|leak|dump|expose)\\b[^\\n]{0,50}\\b(system prompt|system message|hidden prompt|developer message|internal instruction)s?\\b"
+        "pattern": "(?i)\\b(reveal|print|show|repeat|output|leak|dump|expose)\\b[^\\n]{0,50}\\b(system prompt|system message|hidden prompt|developer message|internal instruction)s?\\b|(泄露|输出|显示|重复|打印)[^\\n]{0,30}(系统提示|系统消息|隐藏提示|内部指令)"
       }
     },
     {
@@ -41,7 +41,7 @@
       "max_matches": 3,
       "match": {
         "type": "regex",
-        "pattern": "(?i)\\b(do not|don't|never)\\b[^\\n]{0,40}\\b(tell|inform|notify|mention|reveal|show|warn)\\b[^\\n]{0,40}\\b(user|human|operator|admin|owner)\\b"
+        "pattern": "(?i)\\b(do not|don't|never)\\b[^\\n]{0,40}\\b(tell|inform|notify|mention|reveal|show|warn)\\b[^\\n]{0,20}\\b(user|human|operator|admin|owner)\\b|(不要|别|禁止)\\s*(告诉|通知|告知|提醒)\\s*(用户|操作员|管理员)"
       }
     },
     {
@@ -55,7 +55,7 @@
       "max_matches": 3,
       "match": {
         "type": "regex",
-        "pattern": "(?i)\\b(you are now|from now on|pretend to be|jailbreak|DAN mode|developer mode|unrestricted mode)\\b"
+        "pattern": "(?i)\\b(you are now|from now on|pretend to be|jailbreak|DAN mode|developer mode|unrestricted mode)\\b|(你现在是|从现在开始|扮演|假装|越狱|无限制模式)"
       }
     },
     {
@@ -69,7 +69,7 @@
       "max_matches": 3,
       "match": {
         "type": "regex",
-        "pattern": "(?i)\\b(always|must|automatically)\\b[^\\n]{0,40}\\b(run|execute|call|invoke|install|download|send)\\b[^\\n]{0,50}\\b(without|no)\\b[^\\n]{0,25}\\b(asking|confirm|confirmation|approval|permission|review|consent)\\b"
+        "pattern": "(?i)\\b(always|must|automatically)\\b[^\\n]{0,40}\\b(run|execute|call|invoke|install|download|send)\\b[^\\n]{0,50}\\b(without|no)\\b[^\\n]{0,25}\\b(asking|confirm|confirmation|approval|permission|review|consent)\\b|(始终|总是|自动)[^\\n]{0,30}(执行|运行|安装|下载|发送)[^\\n]{0,20}(无需|不要|不)[^\\n]{0,10}(询问|确认|批准|同意)"
       }
     },
     {
@@ -124,7 +124,7 @@
       "max_matches": 3,
       "match": {
         "type": "regex",
-        "pattern": "(?i)(~\\/\\.ssh|\\.ssh\\/|id_rsa|id_ed25519|\\.aws\\/credentials|\\.config\\/gcloud|\\.kube\\/config|\\.npmrc|\\.pypirc|\\.git-credentials|wallet\\.dat|Login Data|Cookies|Keychain|/etc/(passwd|shadow)|\\.docker\\/config\\.json|~\\/\\.config\\/gh|(^|[\\s\"'/])\\.env\\b)"
+        "pattern": "(?i)(~\\/\\.ssh|\\.ssh\\/|id_rsa|id_ed25519|\\.aws\\/credentials|\\.config\\/gcloud|\\.kube\\/config|\\.npmrc|\\.pypirc|\\.git-credentials|wallet\\.dat|Login Data|Cookies|Keychain|/etc/(passwd|shadow)|\\.docker\\/config\\.json|~\\/\\.config\\/gh|(^|[\\s\"'/])\\.env([\"']|$))"
       }
     },
     {
@@ -252,7 +252,7 @@
       "max_matches": 3,
       "match": {
         "type": "regex",
-        "pattern": "(?i)(\\b(iwr|invoke-webrequest|curl|wget)\\b[^\\n]{0,160}\\|\\s*(iex|invoke-expression|python[0-9.]*|perl|ruby|node)\\b|powershell(\\.exe)?[^\\n]{0,100}\\s-(enc|encodedcommand)\\b|base64\\s+(-d|--decode)[^\\n]{0,60}\\|\\s*(ba|z)?sh\\b)"
+        "pattern": "(?i)(\\b(iwr|invoke-webrequest|curl|wget)\\b[^\\n]{0,200}\\|\\s*(iex|invoke-expression)\\b|\\b(iwr|invoke-webrequest|curl|wget)\\b[^\\n]{0,200}\\|\\s*(sudo\\s+)?(ba|z|da|k)?sh\\b|\\b(iwr|invoke-webrequest|curl|wget)\\b[^\\n]{0,200}\\|\\s*(python[0-9.]*|perl|ruby|node)\\b[^\\n]{0,240}\\b(exec\\s*\\(|eval\\s*\\(|compile\\s*\\(|subprocess|os\\.system|child_process|execSync|spawnSync|spawn\\s*\\(|vm\\.runInThisContext)|powershell(\\.exe)?[^\\n]{0,100}\\s-(enc|encodedcommand)\\b|base64\\s+(-d|--decode)[^\\n]{0,60}\\|\\s*(ba|z)?sh\\b)"
       }
     },
     {
@@ -414,6 +414,327 @@
         "groups": [
           ["SG-PI-001", "SG-PI-002", "SG-PI-003", "SG-PI-004"],
           ["SG-CMD-002", "SG-NET-004"]
+        ],
+        "none_of": []
+      }
+    },
+    {
+      "id": "SG-PI-008",
+      "title": "提示注入：安全保证话术",
+      "severity": "medium",
+      "category": "prompt-injection",
+      "description": "Skill 用“这是安全的/标准做法/已审计/不写入凭证”等话术降低审查警惕，常与危险配置写入同时出现。",
+      "remediation": "删除说服性安全保证；用可验证的事实、权限清单和审计记录说明行为。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "references": ["https://owasp.org/www-project-top-10-for-large-language-model-applications/"],
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\b(this is (safe|standard|normal|expected)|standard practice|not a (risk|security issue)|writes? no [^\\n]{0,30}(credentials|secrets)|no (credentials|secrets) (are )?(written|stored)|already public|appsec[- ]audited|does not introduce|trust (me|this)|reviewers? (can|should) (ignore|trust))\\b|(这是(安全|标准|正常)的?|标准做法|已经?审计|未写入(任何)?(凭证|密钥)|不会(写入|存储)(凭证|密钥)|可以信任|无需担心)"
+      }
+    },
+    {
+      "id": "SG-DATA-001",
+      "title": "读取环境变量",
+      "severity": "medium",
+      "category": "data-access",
+      "description": "Skill 脚本读取进程环境变量，可能接触令牌、云凭证或数据库密码。",
+      "remediation": "改为显式读取白名单变量，并说明用途；不要遍历或输出全部环境变量。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(\\bos\\.environ\\b|\\bprocess\\.env\\b|get-childitem\\s+env:|\\bprintenv\\b|\\benv\\s*\\|\\s*(grep|sort|head))"
+      }
+    },
+    {
+      "id": "SG-DATA-002",
+      "title": "批量导出环境变量",
+      "severity": "high",
+      "category": "data-access",
+      "description": "Skill 遍历或批量输出全部环境变量，常见于凭证窃取。",
+      "remediation": "删除批量导出；只读取完成任务所需的最小配置，并避免输出到日志或网络。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(for\\s+\\w+\\s*,\\s*\\w+\\s+in\\s+os\\.environ\\.items\\(\\)|os\\.environ\\.items\\(\\)|dict\\(\\s*os\\.environ\\s*\\)|json\\.dumps\\([^\\n]{0,40}os\\.environ|json\\.stringify\\(\\s*process\\.env\\s*\\)|object\\.entries\\(\\s*process\\.env\\s*\\)|printenv\\s*>|env\\s*>|set\\s*>)"
+      }
+    },
+    {
+      "id": "SG-SUPPLY-004",
+      "title": "覆盖包管理器源",
+      "severity": "high",
+      "category": "supply-chain",
+      "description": "Skill 把 npm/yarn registry 指向非官方地址，可能把后续依赖安装劫持到攻击者源。",
+      "remediation": "只允许官方或企业已审计的 registry；写入前要求用户确认并记录变更。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)[\"']?[a-z0-9_.-]*registry[a-z0-9_.-]*[\"']?\\s*[=:]\\s*[\"']?https?://([^\\s\"']+)",
+        "absent": "registry\\.npmjs\\.org|registry\\.yarnpkg\\.com|registry\\.npmmirror\\.com"
+      }
+    },
+    {
+      "id": "SG-CMD-004",
+      "title": "批量查找并执行",
+      "severity": "medium",
+      "category": "command",
+      "description": "检测到 find -exec 或类似批量执行模式，可能被用来运行同目录下的隐藏脚本。",
+      "remediation": "改为显式列出并审查要执行的脚本；不要在文档或 Skill 中要求批量执行未知文件。",
+      "applies_to": ["text"],
+      "max_matches": 3,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)\\bfind\\b[^\\n]{0,500}\\s-exec\\b"
+      }
+    },
+    {
+      "id": "SG-OBF-003",
+      "title": "空白填充隐藏载荷",
+      "severity": "high",
+      "category": "obfuscation",
+      "description": "文件包含大量空行，真实代码只占极小比例，可能用于让审查者或预览器忽略尾部载荷。",
+      "remediation": "压缩空白并人工审查文件末尾；不接受无法解释的超长空行结构。",
+      "applies_to": ["text"],
+      "max_matches": 1,
+      "match": {
+        "type": "padding",
+        "min_lines": 2000,
+        "max_nonempty_ratio": 0.02
+      }
+    },
+    {
+      "id": "SG-PYC-001",
+      "title": "Python 字节码与源码不一致",
+      "severity": "high",
+      "category": "obfuscation",
+      "description": "pyc 的源码大小、时间戳或哈希与同名 .py 不一致，可能通过字节码投毒隐藏恶意逻辑。",
+      "remediation": "删除 __pycache__ 后重新编译；发布包只包含可审查源码，并校验构建产物。",
+      "applies_to": ["path"],
+      "max_matches": 2,
+      "match": {
+        "type": "bytecode_integrity"
+      }
+    },
+    {
+      "id": "SG-PYC-002",
+      "title": "Python 字节码危险特征",
+      "severity": "high",
+      "category": "obfuscation",
+      "description": "pyc 的 code object 包含读取环境变量并外联、解码后执行或进程调用等高危组合。",
+      "remediation": "删除 pyc 并回到可审查源码；确认构建产物与源码一致。",
+      "applies_to": ["path"],
+      "max_matches": 2,
+      "match": {
+        "type": "bytecode_danger"
+      }
+    },
+    {
+      "id": "SG-CONT-001",
+      "title": "容器内嵌脚本/可执行文件",
+      "severity": "high",
+      "category": "obfuscation",
+      "description": "docx/xlsx/pptx/zip 等容器内包含脚本或可执行文件，常规文本审查看不到。",
+      "remediation": "解包审查内嵌文件；Skill 不应通过 Office 文档分发可执行脚本。",
+      "applies_to": ["path"],
+      "max_matches": 5,
+      "match": {
+        "type": "container_script",
+        "extensions": ["sh", "bash", "py", "js", "ps1", "bat", "cmd", "exe", "dll", "so", "dylib"]
+      }
+    },
+    {
+      "id": "SG-CONT-002",
+      "title": "Office 容器包含宏或嵌入对象",
+      "severity": "high",
+      "category": "obfuscation",
+      "description": "docx/xlsx/pptx 内包含 vbaProject.bin、ActiveX、OLE 嵌入或对象池，可能携带宏或可执行载荷。",
+      "remediation": "删除宏和嵌入对象；如业务确需，改为禁用宏的只读文档并提供来源证明。",
+      "applies_to": ["path"],
+      "max_matches": 5,
+      "match": {
+        "type": "path_regex",
+        "pattern": "(?i)(^|/)(vbaProject\\.bin|activeX/|embeddings/|oleObject|ObjectPool)"
+      }
+    },
+    {
+      "id": "SG-CONT-003",
+      "title": "容器内嵌 OLE/复合文档",
+      "severity": "critical",
+      "category": "obfuscation",
+      "description": "容器条目是 OLE/CFB 复合文档，可承载宏、嵌入可执行文件或远程对象。",
+      "remediation": "拒绝安装；解包审查 OLE 流并删除嵌入对象。",
+      "applies_to": ["path"],
+      "max_matches": 5,
+      "match": {
+        "type": "container_ole"
+      }
+    },
+    {
+      "id": "SG-CONT-004",
+      "title": "Office 外部关系/域代码",
+      "severity": "high",
+      "category": "obfuscation",
+      "description": "Office 文档包含外部关系、附加模板、DDE、instrText 域代码或 altChunk，可能触发远程内容加载或命令执行。",
+      "remediation": "移除外部关系和域代码；只接受纯内容文档。",
+      "applies_to": ["text"],
+      "max_matches": 5,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(TargetMode\\s*=\\s*[\"']External|attachedTemplate|DDEAUTO|w:instrText|altChunk)"
+      }
+    },
+    {
+      "id": "SG-PDF-001",
+      "title": "PDF 主动内容",
+      "severity": "high",
+      "category": "obfuscation",
+      "description": "PDF 包含 JavaScript、自动动作、Launch、嵌入文件或附加动作，可能在打开时执行代码。",
+      "remediation": "移除 PDF 主动内容；只接受纯静态 PDF，并在隔离环境打开。",
+      "applies_to": ["pdf"],
+      "max_matches": 5,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(/JavaScript|/JS\\b|/OpenAction|/Launch|/EmbeddedFile|/AA\\b)"
+      }
+    },
+    {
+      "id": "SG-WEB-001",
+      "title": "SVG/HTML 主动内容",
+      "severity": "high",
+      "category": "obfuscation",
+      "description": "SVG/HTML 包含脚本、事件处理器、javascript: 链接或自动刷新，可能在渲染时执行代码。",
+      "remediation": "移除脚本与事件处理器；只接受静态 SVG/HTML。",
+      "applies_to": ["text"],
+      "max_matches": 5,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(<script\\b|onload\\s*=|onerror\\s*=|javascript:\\s*|<meta[^>]{0,80}http-equiv\\s*=\\s*[\"']?refresh)"
+      }
+    },
+    {
+      "id": "SG-MCP-001",
+      "title": "MCP 未锁定 npx/uvx 包",
+      "severity": "high",
+      "category": "mcp",
+      "description": "MCP 配置通过 npx/bunx/uvx 启动未锁定版本的包，后续安装可能被替换。",
+      "remediation": "固定包版本或使用完整 commit；优先使用可信的本地二进制。",
+      "applies_to": ["text"],
+      "max_matches": 5,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)([\"']command[\"']\\s*:\\s*[\"'](?:npx|bunx|uvx|pipx)\\s+(?:-y\\s+)?[a-z0-9@._/-]+)",
+        "absent": "@\\d+\\.\\d+"
+      }
+    },
+    {
+      "id": "SG-MCP-002",
+      "title": "MCP Docker 高权限",
+      "severity": "high",
+      "category": "mcp",
+      "description": "MCP 配置以 privileged、docker.sock 或 SYS_ADMIN 启动容器，等同于宿主机控制。",
+      "remediation": "移除 privileged、docker.sock 挂载和 SYS_ADMIN；使用最小权限容器。",
+      "applies_to": ["text"],
+      "max_matches": 5,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(docker\\s+run[^\\n]{0,160}(--privileged|-v\\s+[^\\n]{0,20}/var/run/docker\\.sock|--cap-add\\s+[^\\n]{0,20}SYS_ADMIN))"
+      }
+    },
+    {
+      "id": "SG-MCP-003",
+      "title": "MCP 自动批准",
+      "severity": "high",
+      "category": "mcp",
+      "description": "MCP 配置启用 autoApprove/alwaysAllow 或通配工具批准，跳过人工确认。",
+      "remediation": "关闭自动批准，改为逐工具/逐次确认；通配批准必须移除。",
+      "applies_to": ["text"],
+      "max_matches": 5,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(autoApprove|auto_approve|alwaysAllow|always_allow|yolo)\\s*[\"']?\\s*[:=]\\s*(true|\\[[^\\]]{0,40}\\*[^\\]]{0,40}\\])"
+      }
+    },
+    {
+      "id": "SG-MCP-004",
+      "title": "MCP 远程 URL",
+      "severity": "medium",
+      "category": "mcp",
+      "description": "MCP 配置包含远程 HTTP(S) 端点，需确认来源、认证与数据边界。",
+      "remediation": "使用固定域名、认证与 TLS；优先本地 stdio 或企业已审计端点。",
+      "applies_to": ["text"],
+      "max_matches": 5,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)([\"']url[\"']\\s*:\\s*[\"']https?://[^\"']+)"
+      }
+    },
+    {
+      "id": "SG-MCP-005",
+      "title": "MCP Shell 包装远程执行",
+      "severity": "high",
+      "category": "mcp",
+      "description": "MCP 配置用 bash -c / powershell -Command 包装 curl、wget 或 IEX。",
+      "remediation": "移除 shell 包装；改为固定参数的可审计命令。",
+      "applies_to": ["text"],
+      "max_matches": 5,
+      "match": {
+        "type": "regex",
+        "pattern": "(?i)(bash\\s+-c|powershell\\s+-Command|cmd\\s+/c)[^\\n]{0,160}(curl|wget|Invoke-WebRequest|IEX)"
+      }
+    },
+    {
+      "id": "SG-COMBO-003",
+      "title": "组合风险：批量读取环境变量并外联",
+      "severity": "critical",
+      "category": "exfiltration",
+      "description": "同一 Skill 同时批量读取环境变量与外部网络调用，符合凭证外传特征。",
+      "remediation": "立即隔离该 Skill，轮换环境变量中的凭证，并审查网络目标。",
+      "applies_to": ["skill_md"],
+      "max_matches": 1,
+      "match": {
+        "type": "combo",
+        "groups": [
+          ["SG-DATA-001", "SG-DATA-002"],
+          ["SG-NET-001", "SG-NET-002", "SG-NET-003"]
+        ],
+        "none_of": []
+      }
+    },
+    {
+      "id": "SG-COMBO-004",
+      "title": "组合风险：安全话术掩护供应链劫持",
+      "severity": "critical",
+      "category": "supply-chain",
+      "description": "同一 Skill 同时使用安全保证话术并覆盖包管理器源，符合诱导审查通过的供应链劫持特征。",
+      "remediation": "拒绝安装；检查 .npmrc/.yarnrc 是否被改写，恢复官方源并轮换令牌。",
+      "applies_to": ["skill_md"],
+      "max_matches": 1,
+      "match": {
+        "type": "combo",
+        "groups": [
+          ["SG-PI-008"],
+          ["SG-SUPPLY-004"]
+        ],
+        "none_of": []
+      }
+    },
+    {
+      "id": "SG-COMBO-005",
+      "title": "组合风险：文档内嵌脚本并批量执行",
+      "severity": "critical",
+      "category": "execution",
+      "description": "Office/ZIP 容器内嵌脚本，同时文档要求 find -exec 批量执行，符合隐藏载荷投递特征。",
+      "remediation": "不要按文档要求批量执行；解包审查内嵌脚本并删除该 Skill。",
+      "applies_to": ["skill_md"],
+      "max_matches": 1,
+      "match": {
+        "type": "combo",
+        "groups": [
+          ["SG-CONT-001"],
+          ["SG-CMD-004"]
         ],
         "none_of": []
       }

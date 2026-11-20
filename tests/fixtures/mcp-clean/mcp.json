@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "pinned": {
+      "command": "npx pinned-mcp@1.2.3",
+      "autoApprove": false
+    }
+  }
+}

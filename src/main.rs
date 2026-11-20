@@ -1,7 +1,10 @@
 mod config;
 mod engine;
 mod frontmatter;
+mod guard;
+mod install;
 mod model;
+mod pyc;
 mod report;
 mod rules;
 
@@ -15,7 +18,17 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-const BOOL_FLAGS: &[&str] = &["no-color", "quiet", "json-pretty", "force", "help"];
+const BOOL_FLAGS: &[&str] = &[
+    "no-color",
+    "quiet",
+    "json-pretty",
+    "json",
+    "force",
+    "yes",
+    "dry-run",
+    "keep-quarantine",
+    "help",
+];
 
 fn main() {
     process::exit(run());
@@ -30,6 +43,10 @@ fn run() -> i32 {
     let rest = &args[1..];
     let result = match command {
         "scan" => cmd_scan(rest),
+        "lock" => cmd_lock(rest),
+        "install" => cmd_install(rest),
+        "verify" => cmd_verify(rest),
+        "policy" => cmd_policy(rest),
         "rules" => cmd_rules(rest),
         "init" => cmd_init(rest),
         "version" | "--version" | "-V" => {
@@ -59,6 +76,10 @@ fn print_help() {
 
 Usage:
   skillguard scan <path> [options]
+  skillguard lock <path> [--output skillguard.lock]
+  skillguard verify <path> [--lock skillguard.lock]
+  skillguard policy validate <file.json>
+  skillguard install <source> [options]   (experimental: P1 install rail)
   skillguard rules list
   skillguard rules validate <file.json|dir>
   skillguard init [dir] [--force]
@@ -70,6 +91,10 @@ Scan options:
                                  Exit 1 when a finding reaches this severity (default: high)
   --min-severity low|medium|high|critical
                                  Hide findings below this severity (default: low)
+  --policy <file>                Policy gate (default: .skillguard-policy.json if present)
+  --baseline <file>              Hide findings recorded in a baseline
+  --write-baseline <file>        Write current findings as a baseline
+  --audit <file>                 Append a JSONL audit record
   --ignore SG-XX-001[,SG-YY-*]   Ignore rules by id or prefix
   --allow-domain <domain>        Allow network findings for a domain (repeatable/comma)
   --rules <dir>                  Load extra JSON rule packs (overrides by id)
@@ -79,10 +104,29 @@ Scan options:
   --quiet                        Hide header and summary
   --json-pretty                  Pretty-print JSON output
 
+Lock / verify options:
+  --output <file>                Lockfile path (default: skillguard.lock)
+  --source <label>               Source label stored in the lockfile
+  --lock <file>                  Verify against a lockfile instead of an install receipt
+  --json                         Machine-readable result
+  --audit <file>                 Append a JSONL audit record
+
+Policy file:
+  {{
+    "profile": "team",
+    "fail_on": "high",
+    "max_medium": 10,
+    "deny": ["SG-COMBO-001"],
+    "allow": [{{"rule": "SG-PERM-001", "owner": "alice",
+               "reason": "approved", "expires": "2026-12-31"}}]
+  }}
+
 Examples:
-  skillguard scan ./skills
-  skillguard scan ./skills --format sarif --fail-on high > skillguard.sarif
-  skillguard scan . --ignore SG-SC-001 --allow-domain github.com
+  skillguard scan ./skills --policy .skillguard-policy.json --audit .skillguard-audit.jsonl
+  skillguard scan ./skills --write-baseline baseline.json
+  skillguard lock ./my-skill --output skillguard.lock
+  skillguard verify ./my-skill --lock skillguard.lock
+  skillguard install https://github.com/owner/repo --target claude --yes
 "#
     );
 }
@@ -164,6 +208,279 @@ fn parse_args(args: &[String], known: &[&str]) -> Result<ParsedArgs, String> {
     Ok(ParsedArgs { positional, flags })
 }
 
+fn cmd_lock(args: &[String]) -> Result<i32, String> {
+    let parsed = parse_args(args, &["output", "source", "json", "audit", "help"])?;
+    if parsed.has("help") {
+        print_help();
+        return Ok(0);
+    }
+    let target = parsed.positional.first().map(String::as_str).unwrap_or(".");
+    let root = PathBuf::from(target);
+    if !root.exists() {
+        return Err(format!("path not found: {}", root.display()));
+    }
+    let output = PathBuf::from(parsed.one("output").unwrap_or("skillguard.lock"));
+    let source = parsed.one("source").unwrap_or(target);
+    let findings = scan_for_guard(&root)?;
+    let lock = guard::write_lock(&root, &output, source, &findings)?;
+    if let Some(audit) = parsed.one("audit") {
+        let entry = guard::audit_entry(
+            "lock",
+            &root.display().to_string(),
+            guard::Decision::Allow,
+            &findings,
+            None,
+            Some(&lock.fingerprint),
+        );
+        guard::append_audit(Path::new(audit), &entry)?;
+    }
+    if parsed.has("json") {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&lock)
+                .map_err(|error| format!("cannot serialize lockfile: {error}"))?
+        );
+    } else {
+        println!("SkillGuard {VERSION}  |  lock");
+        println!("skill: {}", lock.skill);
+        println!("source: {}", lock.source);
+        println!("files: {}", lock.files.len());
+        println!("fingerprint: {}", lock.fingerprint);
+        println!("findings: {} total", lock.findings.total);
+        println!("lockfile: {}", output.display());
+    }
+    Ok(0)
+}
+
+fn cmd_policy(args: &[String]) -> Result<i32, String> {
+    let subcommand = args.first().map(String::as_str).unwrap_or("validate");
+    match subcommand {
+        "validate" => {
+            let Some(path) = args.get(1) else {
+                return Err("usage: skillguard policy validate <file.json>".into());
+            };
+            let policy = guard::load_policy(Path::new(path))?;
+            println!(
+                "OK: profile={} fail_on={} max_medium={} deny={} exceptions={}",
+                if policy.profile.is_empty() {
+                    "default"
+                } else {
+                    policy.profile.as_str()
+                },
+                policy.fail_on.as_deref().unwrap_or("high"),
+                policy
+                    .max_medium
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|| "unlimited".to_string()),
+                policy.deny.len(),
+                policy.allow.len()
+            );
+            Ok(0)
+        }
+        other => Err(format!("unknown policy subcommand: {other}")),
+    }
+}
+
+fn scan_for_guard(root: &Path) -> Result<Vec<model::Finding>, String> {
+    let compiled = rules::compile_all(rules::load_builtin()?)?;
+    let opts = ScanOptions {
+        min_severity: Severity::Low,
+        fail_on: Some(Severity::High),
+        ignore_rules: Vec::new(),
+        allow_domains: Vec::new(),
+        max_file_size: 512 * 1024,
+        exclude: Vec::new(),
+    };
+    Ok(engine::scan(root, &compiled, &opts)?.findings)
+}
+
+fn cmd_install(args: &[String]) -> Result<i32, String> {
+    let known = [
+        "dest",
+        "target",
+        "ref",
+        "path",
+        "rules",
+        "allow-domain",
+        "ignore",
+        "yes",
+        "force",
+        "dry-run",
+        "keep-quarantine",
+        "json",
+        "help",
+    ];
+    let parsed = parse_args(args, &known)?;
+    if parsed.has("help") {
+        print_help();
+        return Ok(0);
+    }
+    let Some(source) = parsed.positional.first().cloned() else {
+        return Err("usage: skillguard install <source> --dest <dir>|--target <agent>".into());
+    };
+    if parsed.positional.len() > 1 {
+        return Err("install 只接受一个 source 参数".into());
+    }
+    let opts = install::InstallOptions {
+        source,
+        git_ref: parsed.one("ref").map(ToOwned::to_owned),
+        subpath: parsed.one("path").map(ToOwned::to_owned),
+        dest: parsed.one("dest").map(PathBuf::from),
+        target: parsed.one("target").map(ToOwned::to_owned),
+        rules_dir: parsed.one("rules").map(PathBuf::from),
+        allow_domains: split_csv(&parsed.all("allow-domain")),
+        ignore_rules: split_csv(&parsed.all("ignore")),
+        yes: parsed.has("yes"),
+        force: parsed.has("force"),
+        dry_run: parsed.has("dry-run"),
+        keep_quarantine: parsed.has("keep-quarantine"),
+    };
+    let outcome = install::install(opts)?;
+    if parsed.has("json") {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&outcome)
+                .map_err(|error| format!("cannot serialize install result: {error}"))?
+        );
+    } else {
+        println!(
+            "SkillGuard {VERSION}  |  install\nsource: {}\nskill: {}",
+            outcome.source, outcome.skill
+        );
+        if let Some(reference) = &outcome.resolved_ref {
+            println!("resolved: {reference}");
+        }
+        println!(
+            "scan: {} ({} critical, {} high, {} medium, {} low)",
+            outcome.verdict,
+            outcome.counts.critical,
+            outcome.counts.high,
+            outcome.counts.medium,
+            outcome.counts.low
+        );
+        for finding in &outcome.findings {
+            println!(
+                "  [{}] {} {}:{}  {}",
+                finding.severity.to_uppercase(),
+                finding.rule_id,
+                finding.file,
+                finding.line,
+                finding.title
+            );
+        }
+        if outcome.dry_run {
+            println!("dry-run: no files written");
+        } else {
+            if let Some(destination) = &outcome.destination {
+                println!("destination: {}", destination.display());
+            }
+            println!("fingerprint: {}", outcome.fingerprint);
+            println!("result: INSTALLED");
+        }
+    }
+    Ok(0)
+}
+
+fn cmd_verify(args: &[String]) -> Result<i32, String> {
+    let parsed = parse_args(args, &["lock", "json", "audit", "help"])?;
+    if parsed.has("help") {
+        print_help();
+        return Ok(0);
+    }
+    let Some(path) = parsed.positional.first() else {
+        return Err("usage: skillguard verify <path> [--lock skillguard.lock]".into());
+    };
+    let root = if Path::new(path).is_file() {
+        Path::new(path)
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .unwrap_or(Path::new("."))
+            .to_path_buf()
+    } else {
+        PathBuf::from(path)
+    };
+
+    if let Some(lock) = parsed.one("lock") {
+        let outcome = guard::verify_lock(&root, Path::new(lock))?;
+        if let Some(audit) = parsed.one("audit") {
+            let entry = guard::audit_entry(
+                "verify-lock",
+                &root.display().to_string(),
+                if outcome.ok {
+                    guard::Decision::Allow
+                } else {
+                    guard::Decision::Block
+                },
+                &[],
+                None,
+                Some(&outcome.actual),
+            );
+            guard::append_audit(Path::new(audit), &entry)?;
+        }
+        if parsed.has("json") {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&outcome)
+                    .map_err(|error| format!("cannot serialize verify result: {error}"))?
+            );
+        } else {
+            println!("SkillGuard {VERSION}  |  verify --lock");
+            println!("skill: {}", outcome.skill);
+            println!("path: {}", outcome.path.display());
+            println!("expected: {}", outcome.expected);
+            println!("actual:   {}", outcome.actual);
+            if outcome.ok {
+                println!("result: PASS (lockfile matches)");
+            } else {
+                println!("result: FAIL ({} drift item(s))", outcome.drift.len());
+                for item in &outcome.drift {
+                    println!("  {}  {}", item.kind, item.path);
+                }
+            }
+        }
+        return Ok(if outcome.ok { 0 } else { 1 });
+    }
+
+    let outcome = install::verify(&root)?;
+    if let Some(audit) = parsed.one("audit") {
+        let entry = guard::audit_entry(
+            "verify",
+            &root.display().to_string(),
+            if outcome.ok {
+                guard::Decision::Allow
+            } else {
+                guard::Decision::Block
+            },
+            &[],
+            None,
+            Some(&outcome.actual),
+        );
+        guard::append_audit(Path::new(audit), &entry)?;
+    }
+    if parsed.has("json") {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&outcome)
+                .map_err(|error| format!("cannot serialize verify result: {error}"))?
+        );
+    } else {
+        println!("SkillGuard {VERSION}  |  verify");
+        println!("skill: {}", outcome.skill);
+        println!("path: {}", outcome.path.display());
+        println!("expected: {}", outcome.expected);
+        println!("actual:   {}", outcome.actual);
+        if outcome.ok {
+            println!("result: PASS (no drift)");
+        } else {
+            println!("result: FAIL ({} drift item(s))", outcome.drift.len());
+            for item in &outcome.drift {
+                println!("  {}  {}", item.kind, item.path);
+            }
+        }
+    }
+    Ok(if outcome.ok { 0 } else { 1 })
+}
+
 fn cmd_scan(args: &[String]) -> Result<i32, String> {
     let known = [
         "format",
@@ -177,6 +494,10 @@ fn cmd_scan(args: &[String]) -> Result<i32, String> {
         "no-color",
         "quiet",
         "json-pretty",
+        "policy",
+        "baseline",
+        "write-baseline",
+        "audit",
         "help",
     ];
     let parsed = parse_args(args, &known)?;
@@ -264,11 +585,78 @@ fn cmd_scan(args: &[String]) -> Result<i32, String> {
         exclude: compile_excludes(&cfg.exclude)?,
     };
 
-    let outcome = engine::scan(&root, &compiled, &opts)?;
+    let mut outcome = engine::scan(&root, &compiled, &opts)?;
+
+    if let Some(path) = parsed.one("write-baseline") {
+        guard::write_baseline(Path::new(path), &outcome.findings)?;
+    }
+    if let Some(path) = parsed.one("baseline") {
+        let baseline = guard::load_baseline(Path::new(path))?;
+        outcome.findings = guard::filter_baseline(outcome.findings, &baseline);
+    }
+
+    let policy_path = parsed.one("policy").map(PathBuf::from).or_else(|| {
+        let local = root.join(".skillguard-policy.json");
+        if local.is_file() {
+            Some(local)
+        } else {
+            None
+        }
+    });
+    let policy_result = match &policy_path {
+        Some(path) => {
+            let policy = guard::load_policy(path)?;
+            Some(guard::evaluate(&outcome.findings, &policy))
+        }
+        None => None,
+    };
+
     let threshold = opts.fail_on;
     let color = report::use_color(parsed.has("no-color"));
     let summary = report::summary(&outcome);
-    let failed = report::failed(&summary, threshold);
+    let failed = report::failed(&summary, threshold)
+        || policy_result
+            .as_ref()
+            .map(|result| result.decision == guard::Decision::Block)
+            .unwrap_or(false);
+
+    if let Some(result) = &policy_result {
+        if !parsed.has("quiet") {
+            eprintln!(
+                "policy: {} (profile {}){}",
+                result.decision.as_str(),
+                result.profile,
+                if result.reasons.is_empty() {
+                    String::new()
+                } else {
+                    format!(" — {}", result.reasons.join("; "))
+                }
+            );
+        }
+    }
+
+    if let Some(audit) = parsed.one("audit") {
+        let decision = policy_result
+            .as_ref()
+            .map(|result| result.decision)
+            .unwrap_or(if failed {
+                guard::Decision::Block
+            } else {
+                guard::Decision::Allow
+            });
+        let entry = guard::audit_entry(
+            "scan",
+            &root.display().to_string(),
+            decision,
+            &outcome.findings,
+            policy_path
+                .as_ref()
+                .map(|path| path.display().to_string())
+                .as_deref(),
+            None,
+        );
+        guard::append_audit(Path::new(audit), &entry)?;
+    }
 
     match format.as_str() {
         "json" => println!(

@@ -2,10 +2,14 @@ use crate::frontmatter;
 use crate::model::{Finding, Severity, Skill};
 use crate::rules::{CompiledRule, MatchSpec, Rule, Scope};
 use regex::Regex;
+use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::fs;
+use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
+use std::time::{SystemTime, UNIX_EPOCH};
+use zip::ZipArchive;
 
 pub struct ScanOptions {
     pub min_severity: Severity,
@@ -30,7 +34,6 @@ const IGNORED_DIRS: &[&str] = &[
     "dist",
     ".venv",
     "venv",
-    "__pycache__",
     "vendor",
     ".idea",
     ".vscode",
@@ -41,6 +44,10 @@ const IGNORED_DIRS: &[&str] = &[
 const MAX_DEPTH: usize = 32;
 const MAX_SKILLS: usize = 1000;
 const MAX_FILES: usize = 5000;
+const MAX_CONTAINER_BYTES: u64 = 16 * 1024 * 1024;
+const MAX_CONTAINER_ENTRY_BYTES: usize = 4 * 1024 * 1024;
+const MAX_CONTAINER_TOTAL_BYTES: usize = 32 * 1024 * 1024;
+const MAX_CONTAINER_ENTRIES: usize = 200;
 
 static SECRET_ASSIGN_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
@@ -333,87 +340,77 @@ fn scan_skill(
         let Ok(meta) = fs::metadata(file) else {
             continue;
         };
-        if meta.len() > opts.max_file_size {
+        let container_like = is_container_name(&rel) || has_zip_magic(file);
+        if container_like {
+            if meta.len() > MAX_CONTAINER_BYTES {
+                continue;
+            }
+        } else if meta.len() > opts.max_file_size {
             continue;
         }
         let Ok(bytes) = fs::read(file) else {
             continue;
         };
+
+        if is_zip_bytes(&bytes) {
+            if let Some(entries) = read_container(&bytes) {
+                scan_container_entries(
+                    &skill.name,
+                    &rel,
+                    &entries,
+                    rules,
+                    &ignore_patterns,
+                    opts,
+                    &mut findings,
+                    0,
+                );
+                continue;
+            }
+        }
+
+        if is_pyc_file(&rel, &bytes) {
+            scan_pyc(
+                &skill.name,
+                &rel,
+                file,
+                &bytes,
+                rules,
+                &ignore_patterns,
+                opts,
+                &mut findings,
+            );
+            continue;
+        }
+
+        if is_pdf_bytes(&bytes) {
+            let text = extract_printable(&bytes, 4);
+            scan_text_content(
+                &skill.name,
+                &format!("{rel}::strings"),
+                Scope::Pdf,
+                &text,
+                rules,
+                &ignore_patterns,
+                opts,
+                &mut findings,
+            );
+            continue;
+        }
+
         if is_binary(&bytes) {
             continue;
         }
         let text = String::from_utf8_lossy(&bytes);
-        let content = text.as_ref();
-        let lines: Vec<&str> = content.lines().collect();
-        let suppression = collect_file_suppression(&lines);
-
-        for cr in rules {
-            if !rule_text_applies(&cr.rule, scope) {
-                continue;
-            }
-            match &cr.rule.matcher {
-                MatchSpec::Regex { .. } => {
-                    if let Some(re) = &cr.regex {
-                        scan_regex(
-                            cr,
-                            re,
-                            &skill.name,
-                            &rel,
-                            &lines,
-                            &suppression,
-                            &ignore_patterns,
-                            opts,
-                            &mut findings,
-                        );
-                    }
-                }
-                MatchSpec::SecretEntropy {
-                    min_length,
-                    threshold,
-                    prefixes,
-                } => {
-                    scan_secrets(
-                        cr,
-                        *min_length,
-                        *threshold,
-                        prefixes,
-                        &skill.name,
-                        &rel,
-                        &lines,
-                        &suppression,
-                        &ignore_patterns,
-                        opts,
-                        &mut findings,
-                    );
-                }
-                MatchSpec::HiddenUnicode => {
-                    scan_hidden(
-                        cr,
-                        &skill.name,
-                        &rel,
-                        &lines,
-                        &suppression,
-                        &ignore_patterns,
-                        opts,
-                        &mut findings,
-                    );
-                }
-                MatchSpec::Base64Blob { min_length } => {
-                    scan_base64(
-                        cr,
-                        *min_length,
-                        &skill.name,
-                        &rel,
-                        &lines,
-                        &suppression,
-                        &ignore_patterns,
-                        opts,
-                        &mut findings,
-                    );
-                }
-                _ => {}
-            }
-        }
+        scan_text_content(
+            &skill.name,
+            &rel,
+            scope,
+            text.as_ref(),
+            rules,
+            &ignore_patterns,
+            opts,
+            &mut findings,
+        );
     }
 
     let snapshot = findings.clone();
@@ -465,6 +462,385 @@ fn scan_skill(
     }
 
     Ok(findings)
+}
+
+struct ContainerEntry {
+    name: String,
+    bytes: Vec<u8>,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn scan_text_content(
+    skill: &str,
+    rel: &str,
+    scope: Scope,
+    content: &str,
+    rules: &[CompiledRule],
+    ignore: &[String],
+    opts: &ScanOptions,
+    out: &mut Vec<Finding>,
+) {
+    let lines: Vec<&str> = content.lines().collect();
+    let suppression = collect_file_suppression(&lines);
+
+    for cr in rules {
+        if !rule_text_applies(&cr.rule, scope) {
+            continue;
+        }
+        match &cr.rule.matcher {
+            MatchSpec::Regex { .. } => {
+                if let Some(re) = &cr.regex {
+                    scan_regex(cr, re, skill, rel, &lines, &suppression, ignore, opts, out);
+                }
+            }
+            MatchSpec::SecretEntropy {
+                min_length,
+                threshold,
+                prefixes,
+            } => {
+                scan_secrets(
+                    cr,
+                    *min_length,
+                    *threshold,
+                    prefixes,
+                    skill,
+                    rel,
+                    &lines,
+                    &suppression,
+                    ignore,
+                    opts,
+                    out,
+                );
+            }
+            MatchSpec::HiddenUnicode => {
+                scan_hidden(cr, skill, rel, &lines, &suppression, ignore, opts, out);
+            }
+            MatchSpec::Base64Blob { min_length } => {
+                scan_base64(
+                    cr,
+                    *min_length,
+                    skill,
+                    rel,
+                    &lines,
+                    &suppression,
+                    ignore,
+                    opts,
+                    out,
+                );
+            }
+            MatchSpec::Padding {
+                min_lines,
+                max_nonempty_ratio,
+            } => {
+                if lines.len() < *min_lines {
+                    continue;
+                }
+                let nonempty = lines.iter().filter(|line| !line.trim().is_empty()).count();
+                let ratio = nonempty as f64 / lines.len() as f64;
+                if ratio > *max_nonempty_ratio {
+                    continue;
+                }
+                let msg = format!(
+                    "文件有 {} 行，其中仅 {} 行非空（{:.2}%），疑似用空白填充隐藏尾部载荷",
+                    lines.len(),
+                    nonempty,
+                    ratio * 100.0
+                );
+                let excerpt = format!("padding: {nonempty}/{} non-empty", lines.len());
+                let f = finding_from_rule(&cr.rule, skill, rel, 1, 1, excerpt, msg);
+                push_finding(out, f, ignore, opts);
+            }
+            _ => {}
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn scan_container_entries(
+    skill: &str,
+    outer: &str,
+    entries: &[ContainerEntry],
+    rules: &[CompiledRule],
+    ignore: &[String],
+    opts: &ScanOptions,
+    out: &mut Vec<Finding>,
+    depth: usize,
+) {
+    for entry in entries {
+        let vrel = format!("{outer}::{}", entry.name);
+        let scope = scope_for(&entry.name);
+
+        for cr in rules {
+            if let Some(re) = &cr.path_regex {
+                if !rule_path_applies(&cr.rule) {
+                    continue;
+                }
+                if re.is_match(&vrel) {
+                    let msg = format!("path matched inside container: {vrel}");
+                    let f = finding_from_rule(&cr.rule, skill, &vrel, 1, 1, vrel.clone(), msg);
+                    push_finding(out, f, ignore, opts);
+                }
+            }
+        }
+
+        for cr in rules {
+            if let MatchSpec::ContainerScript { extensions } = &cr.rule.matcher {
+                if is_script_entry(&entry.name, extensions) {
+                    let msg = format!(
+                        "Office/ZIP 容器内嵌脚本或可执行文件：{}，常规文档审查不可见",
+                        entry.name
+                    );
+                    let f =
+                        finding_from_rule(&cr.rule, skill, &vrel, 1, 1, entry.name.clone(), msg);
+                    push_finding(out, f, ignore, opts);
+                }
+            }
+            if matches!(&cr.rule.matcher, MatchSpec::ContainerOle) && is_ole_bytes(&entry.bytes) {
+                let msg = format!("容器内嵌 OLE/复合文档对象：{}", entry.name);
+                let f = finding_from_rule(&cr.rule, skill, &vrel, 1, 1, entry.name.clone(), msg);
+                push_finding(out, f, ignore, opts);
+            }
+        }
+
+        if depth < 3 && is_zip_bytes(&entry.bytes) {
+            if let Some(nested) = read_container(&entry.bytes) {
+                scan_container_entries(skill, &vrel, &nested, rules, ignore, opts, out, depth + 1);
+                continue;
+            }
+        }
+
+        if is_binary(&entry.bytes) {
+            continue;
+        }
+        let text = String::from_utf8_lossy(&entry.bytes);
+        scan_text_content(skill, &vrel, scope, text.as_ref(), rules, ignore, opts, out);
+    }
+}
+
+fn is_ole_bytes(bytes: &[u8]) -> bool {
+    bytes.starts_with(&[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])
+}
+
+fn read_container(bytes: &[u8]) -> Option<Vec<ContainerEntry>> {
+    let mut archive = ZipArchive::new(Cursor::new(bytes)).ok()?;
+    let mut out = Vec::new();
+    let mut total = 0usize;
+    let limit = archive.len().min(MAX_CONTAINER_ENTRIES);
+    for index in 0..limit {
+        let Ok(mut entry) = archive.by_index(index) else {
+            continue;
+        };
+        if entry.is_dir() {
+            continue;
+        }
+        let name = entry.name().to_string();
+        if name.is_empty() || name.contains("..") {
+            continue;
+        }
+        let declared = entry.size() as usize;
+        if declared > MAX_CONTAINER_ENTRY_BYTES
+            || total.saturating_add(declared) > MAX_CONTAINER_TOTAL_BYTES
+        {
+            continue;
+        }
+        let mut data = Vec::with_capacity(declared.min(64 * 1024));
+        if entry.read_to_end(&mut data).is_err() || data.len() > MAX_CONTAINER_ENTRY_BYTES {
+            continue;
+        }
+        total += data.len();
+        out.push(ContainerEntry { name, bytes: data });
+    }
+    Some(out)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn scan_pyc(
+    skill: &str,
+    rel: &str,
+    file: &Path,
+    bytes: &[u8],
+    rules: &[CompiledRule],
+    ignore: &[String],
+    opts: &ScanOptions,
+    out: &mut Vec<Finding>,
+) {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as u32)
+        .unwrap_or(0);
+    let mut detail = None;
+
+    if bytes.len() < 16 {
+        detail = Some("pyc 头部被截断".to_string());
+    } else {
+        let flags = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
+        let source = find_pyc_source(file);
+        if flags & 1 == 0 {
+            let mtime = u32::from_le_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]);
+            let source_size = u32::from_le_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]);
+            match source {
+                Some(src) => {
+                    let actual = fs::metadata(&src).map(|m| m.len() as u32).unwrap_or(0);
+                    if source_size != actual {
+                        detail = Some(format!(
+                            "pyc 记录的源码大小是 {source_size} 字节，实际源码是 {actual} 字节"
+                        ));
+                    } else if mtime > now.saturating_add(86_400) {
+                        detail = Some("pyc 的源码时间戳位于未来，疑似伪造".to_string());
+                    }
+                }
+                None => detail = Some("pyc 找不到对应的 .py 源码".to_string()),
+            }
+        } else {
+            match source {
+                Some(src) => match fs::read(&src) {
+                    Ok(source_bytes) => {
+                        let digest = Sha256::digest(&source_bytes);
+                        if bytes[8..16] != digest[..8] {
+                            detail = Some("pyc 的源码哈希与实际 .py 不一致".to_string());
+                        }
+                    }
+                    Err(_) => detail = Some("无法读取 pyc 对应的 .py 源码".to_string()),
+                },
+                None => detail = Some("pyc 找不到对应的 .py 源码".to_string()),
+            }
+        }
+    }
+
+    if let Some(detail) = detail {
+        if let Some(cr) = rules
+            .iter()
+            .find(|r| matches!(&r.rule.matcher, MatchSpec::BytecodeIntegrity))
+        {
+            let msg = format!("Python 字节码与源码不一致：{detail}");
+            let f = finding_from_rule(&cr.rule, skill, rel, 1, 1, format!("pyc: {detail}"), msg);
+            push_finding(out, f, ignore, opts);
+        }
+    }
+
+    if let Some(report) = crate::pyc::inspect(bytes) {
+        if !report.dangers.is_empty() {
+            if let Some(cr) = rules
+                .iter()
+                .find(|r| matches!(&r.rule.matcher, MatchSpec::BytecodeDanger))
+            {
+                let msg = format!("Python 字节码危险特征：{}", report.dangers.join("；"));
+                let excerpt = report
+                    .names
+                    .iter()
+                    .take(8)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let f = finding_from_rule(&cr.rule, skill, rel, 1, 1, excerpt, msg);
+                push_finding(out, f, ignore, opts);
+            }
+        }
+    }
+
+    let strings = extract_printable(bytes, 4);
+    if !strings.is_empty() {
+        scan_text_content(
+            skill,
+            &format!("{rel}::strings"),
+            Scope::Script,
+            &strings,
+            rules,
+            ignore,
+            opts,
+            out,
+        );
+    }
+}
+
+fn find_pyc_source(pyc: &Path) -> Option<PathBuf> {
+    let dir = pyc.parent()?;
+    let parent = if dir.file_name().and_then(|name| name.to_str()) == Some("__pycache__") {
+        dir.parent()?
+    } else {
+        dir
+    };
+    let name = pyc.file_name()?.to_str()?;
+    let stem = name.split('.').next()?;
+    let source = parent.join(format!("{stem}.py"));
+    source.is_file().then_some(source)
+}
+
+fn extract_printable(bytes: &[u8], min_length: usize) -> String {
+    let mut out = String::new();
+    let mut run = String::new();
+    for &byte in bytes {
+        if (0x20..=0x7e).contains(&byte) || byte == b'\t' {
+            run.push(byte as char);
+        } else {
+            if run.len() >= min_length {
+                out.push_str(&run);
+                out.push('\n');
+            }
+            run.clear();
+        }
+        if out.len() > 64 * 1024 {
+            break;
+        }
+    }
+    if run.len() >= min_length {
+        out.push_str(&run);
+    }
+    out
+}
+
+fn is_zip_bytes(bytes: &[u8]) -> bool {
+    bytes.starts_with(b"PK\x03\x04")
+        || bytes.starts_with(b"PK\x05\x06")
+        || bytes.starts_with(b"PK\x07\x08")
+}
+
+fn has_zip_magic(path: &Path) -> bool {
+    let mut file = match fs::File::open(path) {
+        Ok(file) => file,
+        Err(_) => return false,
+    };
+    let mut magic = [0u8; 4];
+    file.read_exact(&mut magic).is_ok() && is_zip_bytes(&magic)
+}
+
+fn is_container_name(rel: &str) -> bool {
+    let ext = rel.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    matches!(
+        ext.as_str(),
+        "docx"
+            | "docm"
+            | "xlsx"
+            | "xlsm"
+            | "pptx"
+            | "pptm"
+            | "zip"
+            | "jar"
+            | "apk"
+            | "odt"
+            | "ods"
+            | "odp"
+    )
+}
+
+fn is_pyc_file(rel: &str, _bytes: &[u8]) -> bool {
+    rel.to_ascii_lowercase().ends_with(".pyc")
+}
+
+fn is_script_entry(name: &str, extra: &[String]) -> bool {
+    let lower = name.to_ascii_lowercase();
+    if lower.ends_with(".pyc") {
+        return true;
+    }
+    let ext = lower.rsplit('.').next().unwrap_or("");
+    const DEFAULT: &[&str] = &[
+        "sh", "bash", "zsh", "py", "js", "mjs", "cjs", "ts", "ps1", "bat", "cmd", "vbs", "hta",
+        "exe", "dll", "so", "dylib", "jar", "bin", "scr", "msi", "pkg", "apk", "com", "wsf",
+    ];
+    DEFAULT.contains(&ext)
+        || extra
+            .iter()
+            .any(|item| item.trim_start_matches('.').eq_ignore_ascii_case(ext))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -742,12 +1118,17 @@ fn scope_for(rel: &str) -> Scope {
         "sh" | "bash" | "zsh" | "ps1" | "bat" | "cmd" | "py" | "js" | "mjs" | "cjs" | "ts"
         | "go" | "rb" | "php" | "pl" | "lua" | "rs" => Scope::Script,
         "json" | "yaml" | "yml" | "toml" | "ini" | "env" | "conf" | "cfg" => Scope::Config,
+        "pdf" => Scope::Pdf,
         _ => Scope::Text,
     }
 }
 
 fn is_binary(bytes: &[u8]) -> bool {
     bytes.iter().take(8192).any(|b| *b == 0)
+}
+
+fn is_pdf_bytes(bytes: &[u8]) -> bool {
+    bytes.starts_with(b"%PDF-") || bytes.windows(5).take(1024).any(|window| window == b"%PDF-")
 }
 
 #[derive(Default)]

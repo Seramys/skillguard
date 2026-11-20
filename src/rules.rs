@@ -13,6 +13,7 @@ pub enum Scope {
     Script,
     Config,
     Text,
+    Pdf,
     Path,
     All,
 }
@@ -55,6 +56,14 @@ fn default_b64_len() -> usize {
     120
 }
 
+fn default_padding_min_lines() -> usize {
+    2000
+}
+
+fn default_padding_ratio() -> f64 {
+    0.02
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum MatchSpec {
@@ -89,6 +98,19 @@ pub enum MatchSpec {
         #[serde(default)]
         none_of: Vec<String>,
     },
+    Padding {
+        #[serde(default = "default_padding_min_lines")]
+        min_lines: usize,
+        #[serde(default = "default_padding_ratio")]
+        max_nonempty_ratio: f64,
+    },
+    BytecodeIntegrity,
+    ContainerScript {
+        #[serde(default)]
+        extensions: Vec<String>,
+    },
+    ContainerOle,
+    BytecodeDanger,
 }
 
 #[derive(Debug, Clone)]

@@ -14,3 +14,23 @@ __pycache__/
 .DS_Store
 /packages/python/dist
 /packages/npm/*.tgz
+# benchmark corpora
+/bench/samples/tob/
+/bench/samples/generated/
+/bench/samples/adversarial/
+/bench/samples/pyc-matrix/
+/bench/samples/real/
+/bench/imported/
+/bench/results/
+!bench/samples/zh/zh-pyc-mismatch/__pycache__/
+!bench/samples/zh/zh-pyc-mismatch/__pycache__/*.pyc
+
+# local benchmark cache (models, logs)
+/.cache/
+
+# local Qoder session data (contains raw chat logs; never commit)
+/.qoder-data/
+/.arts/
+
+# unrelated local research exports
+/GitHub开源项目商机调研_*.md

@@ -11,10 +11,14 @@ fn fixture(name: &str) -> PathBuf {
         .join(name)
 }
 
-fn scan(fixture_name: &str, extra: &[&str]) -> (i32, Value, String) {
+fn repo_path(rel: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(rel)
+}
+
+fn scan_path(path: PathBuf, extra: &[&str]) -> (i32, Value, String) {
     let mut cmd = Command::new(BIN);
     cmd.arg("scan")
-        .arg(fixture(fixture_name))
+        .arg(path)
         .arg("--format")
         .arg("json")
         .arg("--no-color");
@@ -27,6 +31,10 @@ fn scan(fixture_name: &str, extra: &[&str]) -> (i32, Value, String) {
     let value = serde_json::from_str(&stdout)
         .unwrap_or_else(|e| panic!("invalid JSON ({e})\nstdout: {stdout}\nstderr: {stderr}"));
     (output.status.code().unwrap_or(-1), value, stderr)
+}
+
+fn scan(fixture_name: &str, extra: &[&str]) -> (i32, Value, String) {
+    scan_path(fixture(fixture_name), extra)
 }
 
 fn has_rule(value: &Value, rule_id: &str) -> bool {
@@ -203,4 +211,61 @@ fn rules_list_prints_builtin_pack() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("SG-PI-001"), "{stdout}");
     assert!(stdout.contains("SG-COMBO-001"), "{stdout}");
+}
+#[test]
+fn detects_chinese_prompt_injection() {
+    let (code, value, _) = scan_path(repo_path("bench/samples/zh/zh-pi-ignore"), &[]);
+    assert_eq!(code, 1);
+    assert!(has_rule(&value, "SG-PI-001"), "{value}");
+}
+
+#[test]
+fn detects_container_embedded_script() {
+    let (code, value, _) = scan_path(repo_path("bench/samples/zh/zh-docx-script"), &[]);
+    assert_eq!(code, 1);
+    assert_eq!(
+        severity_of(&value, "SG-CONT-001").as_deref(),
+        Some("high"),
+        "{value}"
+    );
+}
+
+#[test]
+fn detects_bytecode_source_mismatch() {
+    let (code, value, _) = scan_path(repo_path("bench/samples/zh/zh-pyc-mismatch"), &[]);
+    assert_eq!(code, 1);
+    assert!(has_rule(&value, "SG-PYC-001"), "{value}");
+}
+
+#[test]
+fn detects_whitespace_padding_payload() {
+    let (code, value, _) = scan("padding-skill", &[]);
+    assert_eq!(code, 1);
+    assert!(has_rule(&value, "SG-OBF-003"), "{value}");
+    assert!(has_rule(&value, "SG-DATA-002"), "{value}");
+}
+
+#[test]
+fn detects_registry_hijack_combo() {
+    let (code, value, _) = scan_path(repo_path("bench/samples/zh/zh-npm-registry"), &[]);
+    assert_eq!(code, 1);
+    assert!(has_rule(&value, "SG-SUPPLY-004"), "{value}");
+    assert_eq!(
+        severity_of(&value, "SG-COMBO-004").as_deref(),
+        Some("critical"),
+        "{value}"
+    );
+}
+#[test]
+fn benign_curl_pipe_json_is_not_download_exec() {
+    let (code, value, _) = scan("curl-json-benign", &[]);
+    assert!(!has_rule(&value, "SG-NET-004"), "{value}");
+    assert_ne!(code, 1, "{value}");
+}
+
+#[test]
+fn curl_pipe_python_exec_still_flags() {
+    let (code, value, _) = scan("curl-python-exec", &[]);
+    assert_eq!(code, 1);
+    assert!(has_rule(&value, "SG-NET-004"), "{value}");
 }
