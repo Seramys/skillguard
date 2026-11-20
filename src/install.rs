@@ -4,7 +4,7 @@ use crate::model::{Finding, Severity};
 use crate::rules;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
@@ -737,8 +737,19 @@ fn copy_tree_inner(
 }
 
 pub fn fingerprint_tree(root: &Path) -> Result<(String, Vec<FileEntry>), String> {
+    fingerprint_tree_excluding(root, &[])
+}
+
+pub fn fingerprint_tree_excluding(
+    root: &Path,
+    excludes: &[&Path],
+) -> Result<(String, Vec<FileEntry>), String> {
+    let exclude_set: BTreeSet<PathBuf> = excludes
+        .iter()
+        .map(|path| normalize_absolute(path))
+        .collect();
     let mut paths = Vec::new();
-    collect_paths(root, root, 0, &mut paths)?;
+    collect_paths(root, root, 0, &mut paths, &exclude_set)?;
     paths.sort();
     let mut entries = Vec::new();
     let mut aggregate = Sha256::new();
@@ -764,11 +775,48 @@ pub fn fingerprint_tree(root: &Path) -> Result<(String, Vec<FileEntry>), String>
     Ok((hex(&aggregate.finalize()), entries))
 }
 
+fn normalize_absolute(path: &Path) -> PathBuf {
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map(|cwd| cwd.join(path))
+            .unwrap_or_else(|_| path.to_path_buf())
+    };
+    let mut normalized = PathBuf::new();
+    for component in absolute.components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                normalized.pop();
+            }
+            other => normalized.push(other.as_os_str()),
+        }
+    }
+    normalized
+}
+
+fn is_metadata_name(name: &str) -> bool {
+    matches!(
+        name,
+        ".skillguard-receipt.json"
+            | "skillguard.lock"
+            | ".skillguard.lock"
+            | "baseline.json"
+            | "skillguard-baseline.json"
+            | ".skillguard-baseline.json"
+            | "audit.jsonl"
+            | "skillguard-audit.jsonl"
+            | ".skillguard-audit.jsonl"
+    )
+}
+
 fn collect_paths(
     root: &Path,
     current: &Path,
     depth: usize,
     out: &mut Vec<PathBuf>,
+    excludes: &BTreeSet<PathBuf>,
 ) -> Result<(), String> {
     if depth > 16 {
         return Err("目录层级过深".to_string());
@@ -785,11 +833,14 @@ fn collect_paths(
             return Err(format!("发现符号链接，拒绝校验: {}", path.display()));
         }
         let name = entry.file_name().to_string_lossy().to_string();
-        if name == ".git" || name == RECEIPT {
+        if name == ".git" || is_metadata_name(&name) {
+            continue;
+        }
+        if excludes.contains(&normalize_absolute(&path)) {
             continue;
         }
         if file_type.is_dir() {
-            collect_paths(root, &path, depth + 1, out)?;
+            collect_paths(root, &path, depth + 1, out, excludes)?;
         } else if file_type.is_file() {
             out.push(path);
             if out.len() > MAX_TREE_FILES {

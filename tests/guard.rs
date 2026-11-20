@@ -227,21 +227,60 @@ fn baseline_hides_known_findings() {
 }
 
 #[test]
-fn audit_appends_jsonl() {
+fn audit_appends_hash_chained_jsonl() {
     let root = temp_dir("audit");
     let audit = root.join("audit.jsonl");
-    let (code, stdout, stderr) = run(&[
-        "scan",
-        fixture("clean-skill").to_str().unwrap(),
-        "--audit",
-        audit.to_str().unwrap(),
-        "--format",
-        "json",
-    ]);
-    assert_eq!(code, 0, "scan failed\nstdout: {stdout}\nstderr: {stderr}");
+    for _ in 0..2 {
+        let (code, stdout, stderr) = run(&[
+            "scan",
+            fixture("clean-skill").to_str().unwrap(),
+            "--audit",
+            audit.to_str().unwrap(),
+            "--format",
+            "json",
+        ]);
+        assert_eq!(code, 0, "scan failed\nstdout: {stdout}\nstderr: {stderr}");
+    }
     let body = fs::read_to_string(&audit).unwrap();
-    assert!(body.contains("skillguard-audit/v1"), "{body}");
-    assert!(body.contains("\"action\":\"scan\""), "{body}");
+    let lines: Vec<serde_json::Value> = body
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(lines.len(), 2, "{body}");
+    assert_eq!(lines[0]["schema"], "skillguard-audit/v2");
+    assert_eq!(lines[0]["action"], "scan");
+    assert!(lines[0]["entry_hash"].as_str().unwrap().len() == 64);
+    assert_eq!(lines[1]["prev_hash"], lines[0]["entry_hash"]);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn lock_file_inside_root_does_not_drift() {
+    let root = temp_dir("self-lock");
+    fs::copy(
+        fixture("clean-skill").join("SKILL.md"),
+        root.join("SKILL.md"),
+    )
+    .unwrap();
+    let lock = root.join("skillguard.lock");
+    let (code, stdout, stderr) = run(&[
+        "lock",
+        root.to_str().unwrap(),
+        "--output",
+        lock.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "lock failed\nstdout: {stdout}\nstderr: {stderr}");
+    let (code, stdout, stderr) = run(&[
+        "verify",
+        root.to_str().unwrap(),
+        "--lock",
+        lock.to_str().unwrap(),
+    ]);
+    assert_eq!(
+        code, 0,
+        "lockfile must not include itself\nstdout: {stdout}\nstderr: {stderr}"
+    );
     let _ = fs::remove_dir_all(root);
 }
 

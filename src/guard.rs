@@ -1,4 +1,4 @@
-use crate::install::{fingerprint_tree, read_skill_name, Counts, FileEntry};
+use crate::install::{fingerprint_tree_excluding, read_skill_name, Counts, FileEntry};
 use crate::model::{Finding, Severity};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -8,18 +8,22 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const LOCK_SCHEMA: &str = "skillguard-lock/v1";
+const LOCK_SCHEMA: &str = "skillguard-lock/v2";
 const BASELINE_SCHEMA: &str = "skillguard-baseline/v1";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Lockfile {
     pub schema: String,
+    pub tool_version: String,
     pub skill: String,
     pub source: String,
     pub generated_at: u64,
+    pub rules_hash: String,
+    pub policy_hash: Option<String>,
     pub fingerprint: String,
     pub files: Vec<FileEntry>,
     pub findings: Counts,
+    pub finding_digests: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -97,17 +101,48 @@ pub struct PolicyResult {
     pub counts: Counts,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEntry {
-    pub schema: &'static str,
+    pub schema: String,
     pub timestamp_unix: u64,
     pub action: String,
     pub subject: String,
     pub decision: String,
     pub findings: Counts,
+    pub finding_digests: Vec<String>,
+    pub reasons: Vec<String>,
     pub policy: Option<String>,
+    pub policy_hash: Option<String>,
+    pub rules_hash: String,
     pub fingerprint: Option<String>,
     pub tool_version: String,
+    pub prev_hash: Option<String>,
+    pub entry_hash: Option<String>,
+}
+
+pub fn builtin_rules_hash() -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(include_bytes!("../rules/core.json"));
+    hex(&hasher.finalize())
+}
+
+pub fn file_hash(path: &Path) -> Result<String, String> {
+    let data = fs::read(path)
+        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    let mut hasher = Sha256::new();
+    hasher.update(&data);
+    Ok(hex(&hasher.finalize()))
+}
+
+pub fn finding_digests(findings: &[Finding]) -> Vec<String> {
+    let mut digests: Vec<String> = findings
+        .iter()
+        .map(fingerprint_finding)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    digests.sort();
+    digests
 }
 
 pub fn write_lock(
@@ -115,16 +150,22 @@ pub fn write_lock(
     output: &Path,
     source: &str,
     findings: &[Finding],
+    rules_hash: &str,
+    policy_hash: Option<&str>,
 ) -> Result<Lockfile, String> {
-    let (fingerprint, files) = fingerprint_tree(root)?;
+    let (fingerprint, files) = fingerprint_tree_excluding(root, &[output])?;
     let lock = Lockfile {
         schema: LOCK_SCHEMA.to_string(),
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
         skill: read_skill_name(root),
         source: source.to_string(),
         generated_at: now_unix(),
+        rules_hash: rules_hash.to_string(),
+        policy_hash: policy_hash.map(ToOwned::to_owned),
         fingerprint,
         files,
         findings: Counts::from_findings(findings),
+        finding_digests: finding_digests(findings),
     };
     let body = serde_json::to_string_pretty(&lock)
         .map_err(|error| format!("lockfile 序列化失败: {error}"))?;
@@ -145,7 +186,7 @@ pub fn verify_lock(root: &Path, lock_path: &Path) -> Result<LockVerification, St
     if lock.schema != LOCK_SCHEMA {
         return Err(format!("不支持的 lockfile schema: {}", lock.schema));
     }
-    let (actual, files) = fingerprint_tree(root)?;
+    let (actual, files) = fingerprint_tree_excluding(root, &[lock_path])?;
     let old: BTreeMap<String, FileEntry> = lock
         .files
         .into_iter()
@@ -396,13 +437,41 @@ pub fn evaluate(
     }
 }
 
-pub fn append_audit(path: &Path, entry: &AuditEntry) -> Result<(), String> {
+fn last_audit_hash(path: &Path) -> Result<Option<String>, String> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let text = fs::read_to_string(path)
+        .map_err(|e| format!("cannot read audit {}: {e}", path.display()))?;
+    for line in text.lines().rev() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let value: serde_json::Value = serde_json::from_str(line)
+            .map_err(|e| format!("audit chain is corrupt: {e}"))?;
+        let hash = value
+            .get("entry_hash")
+            .and_then(|value| value.as_str())
+            .ok_or_else(|| "audit chain is corrupt: missing entry_hash".to_string())?;
+        return Ok(Some(hash.to_string()));
+    }
+    Ok(None)
+}
+
+pub fn append_audit(path: &Path, mut entry: AuditEntry) -> Result<(), String> {
+    entry.prev_hash = last_audit_hash(path)?;
+    entry.entry_hash = None;
+    let body =
+        serde_json::to_string(&entry).map_err(|error| format!("audit 序列化失败: {error}"))?;
+    let mut hasher = Sha256::new();
+    hasher.update(body.as_bytes());
+    entry.entry_hash = Some(hex(&hasher.finalize()));
+    let line =
+        serde_json::to_string(&entry).map_err(|error| format!("audit 序列化失败: {error}"))?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("cannot create {}: {e}", parent.display()))?;
     }
-    let line =
-        serde_json::to_string(entry).map_err(|error| format!("audit 序列化失败: {error}"))?;
     let mut file = fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -416,19 +485,28 @@ pub fn audit_entry(
     subject: &str,
     decision: Decision,
     findings: &[Finding],
+    reasons: &[String],
     policy: Option<&str>,
+    policy_hash: Option<&str>,
+    rules_hash: &str,
     fingerprint: Option<&str>,
 ) -> AuditEntry {
     AuditEntry {
-        schema: "skillguard-audit/v1",
+        schema: "skillguard-audit/v2".to_string(),
         timestamp_unix: now_unix(),
         action: action.to_string(),
         subject: subject.to_string(),
         decision: decision.as_str().to_string(),
         findings: Counts::from_findings(findings),
+        finding_digests: finding_digests(findings),
+        reasons: reasons.to_vec(),
         policy: policy.map(ToOwned::to_owned),
+        policy_hash: policy_hash.map(ToOwned::to_owned),
+        rules_hash: rules_hash.to_string(),
         fingerprint: fingerprint.map(ToOwned::to_owned),
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        prev_hash: None,
+        entry_hash: None,
     }
 }
 

@@ -209,7 +209,10 @@ fn parse_args(args: &[String], known: &[&str]) -> Result<ParsedArgs, String> {
 }
 
 fn cmd_lock(args: &[String]) -> Result<i32, String> {
-    let parsed = parse_args(args, &["output", "source", "json", "audit", "help"])?;
+    let parsed = parse_args(
+        args,
+        &["output", "source", "policy", "json", "audit", "help"],
+    )?;
     if parsed.has("help") {
         print_help();
         return Ok(0);
@@ -221,18 +224,40 @@ fn cmd_lock(args: &[String]) -> Result<i32, String> {
     }
     let output = PathBuf::from(parsed.one("output").unwrap_or("skillguard.lock"));
     let source = parsed.one("source").unwrap_or(target);
+    let policy_path = parsed.one("policy").map(PathBuf::from);
+    let policy_hash = match &policy_path {
+        Some(path) => {
+            guard::load_policy(path)?;
+            Some(guard::file_hash(path)?)
+        }
+        None => None,
+    };
+    let rules_hash = guard::builtin_rules_hash();
     let findings = scan_for_guard(&root)?;
-    let lock = guard::write_lock(&root, &output, source, &findings)?;
+    let lock = guard::write_lock(
+        &root,
+        &output,
+        source,
+        &findings,
+        &rules_hash,
+        policy_hash.as_deref(),
+    )?;
     if let Some(audit) = parsed.one("audit") {
         let entry = guard::audit_entry(
             "lock",
             &root.display().to_string(),
             guard::Decision::Allow,
             &findings,
-            None,
+            &[],
+            policy_path
+                .as_ref()
+                .map(|path| path.display().to_string())
+                .as_deref(),
+            policy_hash.as_deref(),
+            &rules_hash,
             Some(&lock.fingerprint),
         );
-        guard::append_audit(Path::new(audit), &entry)?;
+        guard::append_audit(Path::new(audit), entry)?;
     }
     if parsed.has("json") {
         println!(
@@ -412,10 +437,17 @@ fn cmd_verify(args: &[String]) -> Result<i32, String> {
                     guard::Decision::Block
                 },
                 &[],
+                &outcome
+                    .drift
+                    .iter()
+                    .map(|item| format!("{} {}", item.kind, item.path))
+                    .collect::<Vec<_>>(),
                 None,
+                None,
+                &guard::builtin_rules_hash(),
                 Some(&outcome.actual),
             );
-            guard::append_audit(Path::new(audit), &entry)?;
+            guard::append_audit(Path::new(audit), entry)?;
         }
         if parsed.has("json") {
             println!(
@@ -452,10 +484,17 @@ fn cmd_verify(args: &[String]) -> Result<i32, String> {
                 guard::Decision::Block
             },
             &[],
+            &outcome
+                .drift
+                .iter()
+                .map(|item| format!("{} {}", item.kind, item.path))
+                .collect::<Vec<_>>(),
             None,
+            None,
+            &guard::builtin_rules_hash(),
             Some(&outcome.actual),
         );
-        guard::append_audit(Path::new(audit), &entry)?;
+        guard::append_audit(Path::new(audit), entry)?;
     }
     if parsed.has("json") {
         println!(
@@ -648,18 +687,29 @@ fn cmd_scan(args: &[String]) -> Result<i32, String> {
             } else {
                 guard::Decision::Allow
             });
+        let policy_hash = match &policy_path {
+            Some(path) => Some(guard::file_hash(path)?),
+            None => None,
+        };
+        let reasons = policy_result
+            .as_ref()
+            .map(|result| result.reasons.clone())
+            .unwrap_or_default();
         let entry = guard::audit_entry(
             "scan",
             &root.display().to_string(),
             decision,
             &outcome.findings,
+            &reasons,
             policy_path
                 .as_ref()
                 .map(|path| path.display().to_string())
                 .as_deref(),
+            policy_hash.as_deref(),
+            &guard::builtin_rules_hash(),
             None,
         );
-        guard::append_audit(Path::new(audit), &entry)?;
+        guard::append_audit(Path::new(audit), entry)?;
     }
 
     match format.as_str() {
