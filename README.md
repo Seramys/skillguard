@@ -1036,7 +1036,7 @@ curl -s http://127.0.0.1:8787/admit \
 | npm 包 | `npm view seramys-skillguard@0.3.0` | 0.3.0 已发布 · 4 平台 vendor |
 | PyPI | `pip install seramys-skillguard==0.3.0` | 0.3.0 已发布 · 4 平台 wheel |
 | Python 启动器 | `skillguard version` | 0.3.0 |
-| GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/workflows/action-selftest.yml) | v0.3.0 · linux/windows/macos x64 |
+| GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/runs/44875955373) | v0.3.0 · 3/3 passed · linux/windows/macos x64 |
 
 <details>
 <summary><b>展开：原始测试输出</b></summary>

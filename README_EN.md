@@ -852,7 +852,7 @@ Local environment: Windows 11 x64, version 0.3.0 with P0–P3, 2026-11-21. npm, 
 | npm package | `npm view seramys-skillguard@0.3.0` | 0.3.0 published · four-platform vendor |
 | PyPI | `pip install seramys-skillguard==0.3.0` | 0.3.0 published · four platform wheels |
 | Python launcher | `skillguard version` | skillguard 0.3.0 |
-| GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/workflows/action-selftest.yml) | v0.3.0 · linux/windows/macos x64 |
+| GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/runs/44875955373) | v0.3.0 · 3/3 passed · linux/windows/macos x64 |
 
 <details>
 <summary><b>Expand: raw test output</b></summary>
