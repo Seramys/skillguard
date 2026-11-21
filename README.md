@@ -149,13 +149,13 @@ skillguard scan ./my-skill --baseline baseline.json
 
 > **定位说明**：`install` 是 P1 实验轨道，不属于 P0 核心。P0 默认使用 `lock` / `verify` / `policy` / `scan`；`install` 保留用于受控环境，默认不宣传、不替用户改变环境。
 
-> **版本状态**：**0.2.0 已发布到 npm / PyPI / GitHub Release**；本仓库源码为 **0.3.0（未发布）**，包含 P0–P3 准入层、59 条规则、审查队列、可选语义层和运行时网关。Release v0.2.0 提供 4 个平台二进制和 SHA256SUMS；0.3.0 需要重新构建后再发布。
+> **版本状态**：**0.3.0 已发布到 npm / PyPI / [GitHub Release](https://github.com/Seramys/skillguard/releases/tag/v0.3.0)**，包含 P0–P3 准入层、59 条规则、审查队列、可选语义层和运行时网关。Release v0.3.0 提供 4 个平台二进制和 SHA256SUMS。
 
 ### 方式一：单文件二进制（推荐）
 
 单文件、无运行时依赖，适合本机扫描和 CI。
 
-**从 Release 下载**（v0.2.0）：下载对应平台的 `skillguard` / `skillguard.exe`，放到 `PATH` 或项目目录。npm/PyPI 包包含同一份单文件二进制。
+**从 Release 下载**（v0.3.0）：下载对应平台的 `skillguard` / `skillguard.exe`，放到 `PATH` 或项目目录。npm/PyPI 包包含同一份单文件二进制。
 
 **从源码构建**：
 
@@ -194,10 +194,10 @@ bash scripts/build.sh
 已发布（多平台），一行命令：
 
 ```bash
-npx --yes seramys-skillguard@0.2.0 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.3.0 scan ./skills --fail-on high
 ```
 
-> 如果本机 npm 使用镜像源且尚未同步 0.2.0，可临时加 `--registry=https://registry.npmjs.org/`，或等镜像同步。
+> 如果本机 npm 使用镜像源且尚未同步 0.3.0，可临时加 `--registry=https://registry.npmjs.org/`，或等镜像同步。
 
 全局安装：
 
@@ -218,7 +218,7 @@ node packages/npm/bin/skillguard.js scan ./tests/fixtures/clean-skill --no-color
 </p>
 <p align="center"><sub>Node 启动器只是薄壳，扫描仍由同一份 Rust 单文件二进制完成。</sub></p>
 
-npm 包把 4 个平台二进制放在 `vendor/<platform>-<arch>/`。0.2.0 已包含 `win32-x64`、`linux-x64`、`darwin-x64`、`darwin-arm64`，`packages/npm/lib/resolve.js` 会按当前平台选择。
+npm 包把 4 个平台二进制放在 `vendor/<platform>-<arch>/`。0.3.0 已包含 `win32-x64`、`linux-x64`、`darwin-x64`、`darwin-arm64`，`packages/npm/lib/resolve.js` 会按当前平台选择。
 
 ### 方式三：Python 生态
 
@@ -229,7 +229,7 @@ pip install seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
 
-> 0.2.0 为 Windows、Linux、macOS 提供独立的平台 wheel（win_amd64、manylinux_2_17_x86_64、macOS arm64/universal2），已发布到 PyPI。
+> 0.3.0 为 Windows、Linux、macOS 提供独立的平台 wheel（win_amd64、manylinux_2_17_x86_64、macOS x86_64/arm64），已发布到 PyPI。
 
 **仓库内验证**：
 
@@ -864,10 +864,10 @@ jobs:
 
 ### 使用本仓库的 composite Action（npm 包已发布，含 4 平台二进制）
 
-`action.yml` 已包含在仓库中，通过 `npx seramys-skillguard` 运行；npm 包 0.2.0 已内含 4 个平台二进制。固定到发布标签：
+`action.yml` 已包含在仓库中，通过 `npx seramys-skillguard` 运行；npm 包 0.3.0 已内含 4 个平台二进制。固定到发布标签：
 
 ```yaml
-- uses: Seramys/skillguard@v0.2.0
+- uses: Seramys/skillguard@v0.3.0
   with:
     path: "."
     fail-on: high
@@ -879,11 +879,11 @@ jobs:
 | `path` | `.` | 要扫描的目录 |
 | `fail-on` | `high` | `low` / `medium` / `high` / `critical` / `none` |
 | `format` | `sarif` | `text` / `json` / `sarif`，输出到运行日志 |
-| `version` | `0.2.0` | npm 包版本 |
+| `version` | `0.3.0` | npm 包版本 |
 
-> composite Action 只运行扫描并设置退出码；它不写 SARIF 文件。需要 Code Scanning 时，用 `npx --yes seramys-skillguard@0.2.0 scan . --format sarif > skillguard.sarif`，或使用上面的本地构建工作流。
+> composite Action 只运行扫描并设置退出码；它不写 SARIF 文件。需要 Code Scanning 时，用 `npx --yes seramys-skillguard@0.3.0 scan . --format sarif > skillguard.sarif`，或使用上面的本地构建工作流。
 
-> npm 包 0.2.0 已包含 win32-x64、linux-x64、darwin-x64、darwin-arm64；Action 自测在 ubuntu/windows/macos x64 上 3/3 通过：[运行记录](https://github.com/Seramys/skillguard/actions/runs/44661440348)。
+> npm 包 0.3.0 已包含 win32-x64、linux-x64、darwin-x64、darwin-arm64；Action 自测在 ubuntu/windows/macos x64 上运行 v0.3.0。
 
 ### 通用 CI
 
@@ -978,7 +978,7 @@ python bench/run.py --exe target/release/skillguard \
 
 门禁参数在 `bench/manifest.json`：`target_fpr=0.03`、`max_fpr_upper=0.06`、`min_recall_at_fpr=0.75`（P0 回归下限）、`target_recall_at_fpr=0.90`（P2 目标）。`bench/reports/` 只提交摘要和 Markdown，原始逐样本 JSON 不提交。
 
-> 该基准跑的是工作区源码 0.3.0。已发布 0.2.0 不包含本轮 P0–P3 功能；npm/PyPI/GitHub Release 需要重新构建并发布 0.3.0。
+> 该基准跑的是工作区源码 0.3.0；已发布的 npm/PyPI/GitHub Release 0.3.0 使用同一套规则与默认配置。
 
 ### P0–P3 已实现什么
 
@@ -1021,7 +1021,7 @@ curl -s http://127.0.0.1:8787/admit \
 
 ## 验证
 
-本地验证环境：Windows 11 x64，源码版本 0.3.0（含 P0–P3），2026-11-21；已发布包仍是 0.2.0，尚未包含本轮功能。
+本地验证环境：Windows 11 x64，版本 0.3.0（含 P0–P3），2026-11-21；已发布 npm/PyPI/GitHub Release 均为 0.3.0。
 
 | 检查项 | 命令 | 结果 |
 |---|---|---|
@@ -1033,10 +1033,10 @@ curl -s http://127.0.0.1:8787/admit \
 | 自扫描 | `target/release/skillguard scan .` | PASS · 0 high · 6 medium / 3 low |
 | SARIF | `--format sarif` | valid 2.1.0 · 59 rules |
 | 盲测 | holdout-v3 | 212 / 334；recall 77.8%，FPR 3.0% |
-| npm 包 | `npm pack --dry-run` | 0.3.0 metadata；未发布 |
-| PyPI | `twine upload` | 0.2.0 已发布；0.3.0 未发布 |
+| npm 包 | `npm view seramys-skillguard@0.3.0` | 0.3.0 已发布 · 4 平台 vendor |
+| PyPI | `pip install seramys-skillguard==0.3.0` | 0.3.0 已发布 · 4 平台 wheel |
 | Python 启动器 | `skillguard version` | 0.3.0 |
-| GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/runs/44661440348) | 3/3 passed · linux/windows/macos x64（0.2.0） |
+| GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/workflows/action-selftest.yml) | v0.3.0 · linux/windows/macos x64 |
 
 <details>
 <summary><b>展开：原始测试输出</b></summary>
@@ -1155,14 +1155,14 @@ LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不�
 <details>
 <summary><b>支持哪些平台？</b></summary>
 
-源码支持 Windows / Linux / macOS；CI 矩阵在三平台运行测试和 release 构建。源码 0.3.0 在 Windows 11 x64 完成本地验证；已发布的 0.2.0 提供四平台包与二进制。
+源码支持 Windows / Linux / macOS；CI 矩阵在三平台运行测试和 release 构建。0.3.0 在 Windows 11 x64 完成本地验证，npm/PyPI/GitHub Release 均提供四平台包与二进制。
 
 </details>
 
 <details>
 <summary><b>npm / PyPI 已经发布了吗？</b></summary>
 
-0.2.0 已发布到 npm / PyPI / GitHub Release，包含 Windows、Linux、macOS x64/arm64 平台包与二进制。其他架构请源码构建。
+0.3.0 已发布到 npm / PyPI / GitHub Release，包含 Windows、Linux、macOS x64/arm64 平台包与二进制。其他架构请源码构建。
 
 </details>
 
@@ -1187,7 +1187,7 @@ LLM 语义分析可以作为补充，但不适合作为唯一闸门：结果不�
 > 以下是方向，不是承诺；优先级会根据真实使用反馈调整。
 
 - **0.2（npm/PyPI 已发布）**：策略权威性、lock/audit 哈希链、install 加固与公开/扩展双基准。
-- **0.3（源码完成，待发布）**：59 条规则、代码块/数据流、Block/Review/Allow、证据图、策略包、审计导出、GitHub 注解、可选本地语义层、运行时 admit/gateway；盲测 77.8% / 3.0%。
+- **0.3（npm/PyPI/Release 已发布）**：59 条规则、代码块/数据流、Block/Review/Allow、证据图、策略包、审计导出、GitHub 注解、可选本地语义层、运行时 admit/gateway；盲测 77.8% / 3.0%。
 - **1.0**：运行时 Agent 网关、工具调用审批、集中策略与审计控制台。
 
 ### 标识

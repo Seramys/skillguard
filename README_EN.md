@@ -125,13 +125,13 @@ The experimental `install` rail accepts only HTTPS GitHub sources with a 40-char
 
 ## Installation
 
-> **Version status**: **0.2.0 is published to npm / PyPI / GitHub Release**. The source tree is **0.3.0 (unreleased)** and contains 59 rules, P0–P3 admission features, capability evidence, optional semantic providers, and runtime admission. Release v0.2.0 ships four platform binaries and SHA256SUMS; 0.3.0 needs a rebuild before publishing.
+> **Version status**: **0.3.0 is published to npm / PyPI / [GitHub Release](https://github.com/Seramys/skillguard/releases/tag/v0.3.0)**. It contains 59 rules, P0–P3 admission features, capability evidence, optional semantic providers, and runtime admission. Release v0.3.0 ships four platform binaries and SHA256SUMS.
 
 ### Option 1: single-file binary (recommended)
 
 One file, no runtime dependencies. Best for local scans and CI.
 
-**Download from Releases** (after release): grab the `skillguard` / `skillguard.exe` for your platform and put it on `PATH` or in your project.
+**Download from Releases** (v0.3.0): grab the `skillguard` / `skillguard.exe` for your platform and put it on `PATH` or in your project.
 
 **Build from source**:
 
@@ -170,10 +170,10 @@ bash scripts/build.sh
 Published (multi-platform):
 
 ```bash
-npx --yes seramys-skillguard@0.2.0 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.3.0 scan ./skills --fail-on high
 ```
 
-> If your npm mirror has not synced 0.2.0 yet, add `--registry=https://registry.npmjs.org/` or wait for the mirror.
+> If your npm mirror has not synced 0.3.0 yet, add `--registry=https://registry.npmjs.org/` or wait for the mirror.
 
 Global install:
 
@@ -194,7 +194,7 @@ node packages/npm/bin/skillguard.js scan ./tests/fixtures/clean-skill --no-color
 </p>
 <p align="center"><sub>The Node launcher is a thin shim; scanning is still done by the same Rust binary.</sub></p>
 
-The npm package stores four platform binaries under `vendor/<platform>-<arch>/`: `win32-x64`, `linux-x64`, `darwin-x64`, and `darwin-arm64`. `packages/npm/lib/resolve.js` selects the current platform.
+The 0.3.0 npm package stores four platform binaries under `vendor/<platform>-<arch>/`: `win32-x64`, `linux-x64`, `darwin-x64`, and `darwin-arm64`. `packages/npm/lib/resolve.js` selects the current platform.
 
 ### Option 3: Python ecosystem
 
@@ -205,7 +205,7 @@ pip install seramys-skillguard
 skillguard scan ./skills --fail-on high
 ```
 
-> 0.2.0 publishes separate platform wheels for Windows, Linux, and macOS (win_amd64, manylinux_2_17_x86_64, macOS arm64/universal2) on PyPI.
+> 0.3.0 publishes separate platform wheels for Windows, Linux, and macOS (win_amd64, manylinux_2_17_x86_64, macOS x86_64/arm64) on PyPI.
 
 **Repository verification**:
 
@@ -763,10 +763,10 @@ jobs:
 
 ### Use the composite Action (npm package published with 4 platform binaries)
 
-`action.yml` is included and runs through `npx seramys-skillguard`. The npm package 0.2.0 bundles all four platform binaries. Pin the released tag:
+`action.yml` is included and runs through `npx seramys-skillguard`. The npm package 0.3.0 bundles all four platform binaries. Pin the released tag:
 
 ```yaml
-- uses: Seramys/skillguard@v0.2.0
+- uses: Seramys/skillguard@v0.3.0
   with:
     path: "."
     fail-on: high
@@ -778,11 +778,11 @@ jobs:
 | `path` | `.` | Directory to scan |
 | `fail-on` | `high` | `low` / `medium` / `high` / `critical` / `none` |
 | `format` | `sarif` | `text` / `json` / `sarif`, written to the run log |
-| `version` | `0.2.0` | npm package version |
+| `version` | `0.3.0` | npm package version |
 
-> The composite Action runs the scan and sets the exit code; it does not create a SARIF file. For Code Scanning, use `npx --yes seramys-skillguard@0.2.0 scan . --format sarif > skillguard.sarif`, or the local-build workflow above.
+> The composite Action runs the scan and sets the exit code; it does not create a SARIF file. For Code Scanning, use `npx --yes seramys-skillguard@0.3.0 scan . --format sarif > skillguard.sarif`, or the local-build workflow above.
 
-> The npm package 0.2.0 includes win32-x64, linux-x64, darwin-x64, and darwin-arm64; the Action self-test passed 3/3 on ubuntu/windows/macos x64: [run log](https://github.com/Seramys/skillguard/actions/runs/44661440348).
+> The npm package 0.3.0 includes win32-x64, linux-x64, darwin-x64, and darwin-arm64; the Action self-test runs v0.3.0 on ubuntu/windows/macos x64.
 
 ### Generic CI
 
@@ -838,7 +838,7 @@ Committed summaries live in `bench/reports/`; raw per-sample reports are ignored
 
 ## Verification
 
-Local environment: Windows 11 x64, source 0.3.0 with P0–P3, 2026-11-21. Published packages remain 0.2.0 and do not include this round yet.
+Local environment: Windows 11 x64, version 0.3.0 with P0–P3, 2026-11-21. npm, PyPI, and GitHub Release all publish 0.3.0.
 
 | Check | Command | Result |
 |---|---|---|
@@ -849,10 +849,10 @@ Local environment: Windows 11 x64, source 0.3.0 with P0–P3, 2026-11-21. Publis
 | Formatting | `cargo fmt --check` | clean |
 | Self-scan | `target/release/skillguard scan .` | PASS · 0 high · 6 medium / 3 low |
 | SARIF | `--format sarif` | valid 2.1.0 · 59 rules |
-| npm package | `npm pack --dry-run` | 0.3.0 metadata · unreleased |
-| PyPI | `twine upload` | 0.2.0 published · 0.3.0 unreleased |
+| npm package | `npm view seramys-skillguard@0.3.0` | 0.3.0 published · four-platform vendor |
+| PyPI | `pip install seramys-skillguard==0.3.0` | 0.3.0 published · four platform wheels |
 | Python launcher | `skillguard version` | skillguard 0.3.0 |
-| GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/runs/44661440348) | 3/3 passed · linux/windows/macos x64 |
+| GitHub Action | [Action self-test](https://github.com/Seramys/skillguard/actions/workflows/action-selftest.yml) | v0.3.0 · linux/windows/macos x64 |
 
 <details>
 <summary><b>Expand: raw test output</b></summary>
@@ -947,7 +947,7 @@ Single binary, no runtime, fast startup; linear-time regex is safer for untruste
 <details>
 <summary><b>Why not LLM-based semantic scanning?</b></summary>
 
-LLM analysis is useful as a supplement, but a poor sole gate: non-deterministic, often network/model dependent, and hard to reproduce in CI. 0.1.x focuses on deterministic, offline, explainable static rules; semantic analysis is on the roadmap as an optional offline mode.
+LLM analysis is useful as a supplement, but a poor sole gate: non-deterministic, often network/model dependent, and hard to reproduce in CI. SkillGuard keeps deterministic, offline, explainable rules as the default gate; 0.3.0 adds an optional local semantic layer that is off by default and never bundles a model.
 
 </details>
 
@@ -968,14 +968,14 @@ Yes, but if there is no `SKILL.md`, the root is treated as one Skill. For large 
 <details>
 <summary><b>Which platforms are supported?</b></summary>
 
-The source builds on Windows / Linux / macOS, and the CI matrix runs tests and release builds on all three. Source 0.3.0 was verified locally on Windows 11 x64; 0.2.0 is published on npm/PyPI/GitHub Release.
+The source builds on Windows / Linux / macOS, and the CI matrix runs tests and release builds on all three. 0.3.0 was verified locally on Windows 11 x64 and is published on npm/PyPI/GitHub Release.
 
 </details>
 
 <details>
 <summary><b>Are npm / PyPI packages published?</b></summary>
 
-0.2.0 is published to npm / PyPI / GitHub Release with Windows, Linux, and macOS x64/arm64 support. Build from source for other architectures.
+0.3.0 is published to npm / PyPI / GitHub Release with Windows, Linux, and macOS x64/arm64 support. Build from source for other architectures.
 
 </details>
 
@@ -1000,7 +1000,7 @@ Write a JSON rule pack and load it with `--rules`, or place it in `rules_dir`. S
 > Direction, not a promise; priorities will follow real usage feedback.
 
 - **0.2 (published)**: authoritative policy, lock/audit hash chains, hardened install rail, and the public/extended benchmark split.
-- **0.3 (source complete, unreleased)**: 59 rules, code-block and dataflow insight, Block/Review/Allow, evidence graph, policy packs, audit export, GitHub annotations, optional local semantic layer, runtime `admit`/`gateway`; blind holdout 77.8% recall / 3.0% FPR.
+- **0.3 (published)**: 59 rules, code-block and dataflow insight, Block/Review/Allow, evidence graph, policy packs, audit export, GitHub annotations, optional local semantic layer, runtime `admit`/`gateway`; blind holdout 77.8% recall / 3.0% FPR.
 - **1.0**: runtime agent gateway, tool-call approvals, central policy and audit console.
 
 ### Brand mark

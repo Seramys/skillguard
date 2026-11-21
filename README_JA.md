@@ -82,7 +82,7 @@ cargo build --release
 
 ## インストール
 
-> **0.2.0 の現状**：npm / PyPI / GitHub Release の 0.2.0 は公開済みで、win32-x64 / linux-x64 / darwin-x64 / darwin-arm64 を含みます。Release v0.2.0 には 4 つのプラットフォームバイナリと SHA256SUMS があります。
+> **0.3.0 の現状**：npm / PyPI / GitHub Release の 0.3.0 は公開済みで、win32-x64 / linux-x64 / darwin-x64 / darwin-arm64 を含みます。Release v0.3.0 には 4 つのプラットフォームバイナリと SHA256SUMS があります。
 
 ### 1. 単一バイナリ（推奨）
 
@@ -97,7 +97,7 @@ bash scripts/build.sh     # dist/<platform>-<arch>/ にコピー
 公開済み（マルチプラットフォーム）：
 
 ```bash
-npx --yes seramys-skillguard@0.2.0 scan ./skills --fail-on high
+npx --yes seramys-skillguard@0.3.0 scan ./skills --fail-on high
 ```
 
 リポジトリ内での検証：
@@ -203,7 +203,7 @@ skillguard version
   <img src="docs/assets/screenshots/verification-en.png" width="980" alt="ローカル検証レポート">
 </p>
 
-環境：Windows 11 x64、ソース 0.3.0（未公開）、2026-11-21。公開済みパッケージは 0.2.0 です。
+環境：Windows 11 x64、0.3.0、2026-11-21。npm / PyPI / GitHub Release はすべて 0.3.0 を公開済みです。
 
 - テスト：100 件成功（47 ユニット + 53 統合）
 - Clippy：警告 0
